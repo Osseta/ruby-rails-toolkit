@@ -1,0 +1,9 @@
+out
+dist
+node_modules
+.vscode-test/
+*.vsix
+.DS_Store
+tmp
+.github/copilot-instructions.md
+build_extension

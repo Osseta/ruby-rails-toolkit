@@ -1,0 +1,229 @@
+{
+  "name": "ruby-rails-toolkit",
+  "displayName": "Ruby & Rails Development Toolkit",
+  "description": "A comprehensive VS Code toolkit for Ruby and Rails development with testing, debugging, and process management",
+  "version": "0.0.1",
+  "publisher": "osseta",
+  "author": {
+    "name": "Anthony Richardson",
+    "email": "anthony@anthonyrichardson.com",
+    "url": "https://anthonyrichardson.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Osseta/ruby-rails-toolkit"
+  },
+  "galleryBanner": {
+    "color": "#e9573f",
+    "theme": "dark"
+  },
+  "keywords": [
+    "ruby",
+    "ruby on rails",
+    "rails",
+    "rspec",
+    "testing",
+    "debugging",
+    "development toolkit",
+    "ruby development",
+    "rails development",
+    "unit testing",
+    "application runner"
+  ],
+  "icon": "icon.jpeg",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.63.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "workspaceContains:**/*_spec.rb"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "Run RSpec",
+      "properties": {
+        "runRspec.automaticallyShowOutputForCommand": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically show output for a command when it is run."
+        },
+        "runRspec.showProcessOutputOnServer500Errors": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show process output on server 500 errors"
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "appRunner",
+          "title": "App Runner",
+          "icon": "./media/light/run.svg"
+        }
+      ]
+    },
+    "views": {
+      "appRunner": [
+        {
+          "id": "appRunnerTreeView",
+          "name": "App Runner"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "appRunner.refresh",
+        "title": "Refresh App Runner"
+      },
+      {
+        "command": "appRunner.runAll",
+        "title": "Run All App Commands",
+        "icon": "$(run-all)"
+      },
+      {
+        "command": "appRunner.stopAll",
+        "title": "Stop All App Commands",
+        "icon": "$(close-all)"
+      },
+      {
+        "command": "appRunner.run",
+        "title": "Run App Command",
+        "icon": "$(run)"
+      },
+      {
+        "command": "appRunner.stop",
+        "title": "Stop App Command",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "appRunner.debug",
+        "title": "Debug App Command",
+        "icon": "$(debug)"
+      },
+      {
+        "command": "appRunner.showOutput",
+        "title": "Show Output Channel",
+        "icon": "$(terminal-view-icon)"
+      },
+      {
+        "command": "appRunner.showQuickPick",
+        "title": "Show Actions Menu",
+        "icon": "$(menu)"
+      },
+      {
+        "command": "rspec-runner.debugEntireRubySpec",
+        "title": "Run Entire Ruby Spec",
+        "icon": "$(debug-alt)"
+      },
+      {
+        "command": "rspec-runner.runRubySpec",
+        "title": "Run RSpec"
+      },
+      {
+        "command": "rspec-runner.debugRubySpec",
+        "title": "Debug RSpec"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "when": "resourceExtname == .rb && resourceFilename =~ /_spec/",
+          "command": "rspec-runner.debugEntireRubySpec",
+          "group": "navigation"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "appRunner.runAll",
+          "when": "view == appRunnerTreeView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "appRunner.stopAll",
+          "when": "view == appRunnerTreeView",
+          "group": "navigation@2"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "appRunner.run",
+          "when": "view == appRunnerTreeView && viewItem =~ /canRun/",
+          "group": "inline@0"
+        },
+        {
+          "command": "appRunner.showOutput",
+          "when": "view == appRunnerTreeView && viewItem =~ /canShowOutputCrashed/",
+          "group": "inline@0"
+        },
+        {
+          "command": "appRunner.showOutput",
+          "when": "view == appRunnerTreeView && viewItem =~ /canShowOutputRunning/",
+          "group": "inline@0"
+        },
+        {
+          "command": "appRunner.showQuickPick",
+          "when": "view == appRunnerTreeView",
+          "group": "inline@9"
+        }
+      ]
+    },
+    "submenus": [
+      {
+        "id": "appRunner.advancedActions",
+        "label": "Advanced Actions"
+      }
+    ],
+    "colors": [
+      {
+        "id": "appRunner.crashedCommand.foreground",
+        "description": "Foreground color for crashed commands in tree view",
+        "defaults": {
+          "dark": "#f14c4c",
+          "light": "#d73a49",
+          "highContrast": "#ff6b6b"
+        }
+      },
+      {
+        "id": "appRunner.runningCommand.foreground",
+        "description": "Foreground color for running commands in tree view",
+        "defaults": {
+          "dark": "#4caf50",
+          "light": "#388e3c",
+          "highContrast": "#4caf50"
+        }
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "clean": "rm -rf out",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "npm run clean && npm run compile && vscode-test --extensionDevelopmentPath=. --extensionTestsPath=./out/test  --reporter min"
+  },
+  "devDependencies": {
+    "@types/ejs": "^3.1.5",
+    "@types/mocha": "^10.0.7",
+    "@types/node": "20.x",
+    "@types/sinon": "^17.0.4",
+    "@typescript-eslint/eslint-plugin": "^8.3.0",
+    "@typescript-eslint/parser": "^8.3.0",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.5.2",
+    "eslint": "^9.28.0",
+    "sinon": "^17.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4",
+    "vscode": "^1.1.34"
+  },
+  "dependencies": {
+    "ejs": "^3.1.10"
+  }
+}
