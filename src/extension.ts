@@ -1,8 +1,12 @@
 import { activate as activateRspecRunner, deactivate as deactivateRspecRunner } from './rspecRunner';
 import { AppRunnerTreeDataProvider, registerAppRunnerTreeView } from './appRunner';
 import { FileLockManager } from './fileLockManager';
+import { ProcessTracker } from './processTracker';
 
 export function activate(context: import('vscode').ExtensionContext) {
+    // Initialize ProcessTracker with extension context for user-specific directories
+    ProcessTracker.initialize(context);
+    
     activateRspecRunner(context);
     registerAppRunnerTreeView(context);
 }

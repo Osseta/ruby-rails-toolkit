@@ -33,7 +33,7 @@
   "icon": "icon.jpeg",
   "license": "MIT",
   "engines": {
-    "vscode": "^1.63.0"
+    "vscode": "^1.80.0"
   },
   "categories": [
     "Other"
@@ -213,6 +213,7 @@
     "@types/mocha": "^10.0.7",
     "@types/node": "20.x",
     "@types/sinon": "^17.0.4",
+    "@types/vscode": "^1.80.0",
     "@typescript-eslint/eslint-plugin": "^8.3.0",
     "@typescript-eslint/parser": "^8.3.0",
     "@vscode/test-cli": "^0.0.10",
@@ -220,8 +221,7 @@
     "eslint": "^9.28.0",
     "sinon": "^17.0.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.5.4",
-    "vscode": "^1.1.34"
+    "typescript": "^5.5.4"
   },
   "dependencies": {
     "ejs": "^3.1.10"

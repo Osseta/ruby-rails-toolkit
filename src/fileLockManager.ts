@@ -30,6 +30,9 @@ export class FileLockManager {
         const lockFilePath = this.getLockFilePath(commandCode);
         const pidFilePath = ProcessTracker.getPidFilePath(commandCode);
         
+        // Ensure the PID directory exists before trying to create any files
+        ProcessTracker.ensurePidDir();
+        
         const startTime = Date.now();
         
         while (Date.now() - startTime < timeout) {

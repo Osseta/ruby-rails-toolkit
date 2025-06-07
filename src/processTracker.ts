@@ -6,21 +6,39 @@ import * as vscode from 'vscode';
 import type { ProcessTerminationReason } from './types';
 
 /**
- * Manages process tracking using PID files in a known temp directory.
+ * Manages process tracking using PID files in a user-specific directory.
  * Used for both Ruby (with or without rdbg) and shell commands.
  * Also tracks process termination reasons to determine proper icon display.
  */
 export class ProcessTracker {
+    private static readonly PID_DIR = 'pids';
+    private static readonly STATE_DIR = 'process-states';
+    
     private static outputChannels: Map<string, vscode.OutputChannel> = new Map();
+    private static extensionContext: vscode.ExtensionContext | undefined;
+
+    /**
+     * Initializes the ProcessTracker with the extension context.
+     * This must be called during extension activation.
+     */
+    static initialize(context: vscode.ExtensionContext): void {
+        this.extensionContext = context;
+    }
 
     static getPidDir(): string {
-        const base = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-        return path.join(base || os.tmpdir(), 'tmp', 'pids');
+        if (this.extensionContext?.globalStorageUri) {
+            return path.join(this.extensionContext.globalStorageUri.fsPath, this.PID_DIR);
+        }
+        // Fallback to os.tmpdir if context is not available
+        return path.join(os.tmpdir(), this.PID_DIR);
     }
 
     static getStateDir(): string {
-        const base = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-        return path.join(base || os.tmpdir(), 'tmp', 'process-states');
+        if (this.extensionContext?.globalStorageUri) {
+            return path.join(this.extensionContext.globalStorageUri.fsPath, this.STATE_DIR);
+        }
+        // Fallback to os.tmpdir if context is not available
+        return path.join(os.tmpdir(), this.STATE_DIR);
     }
 
     /**
