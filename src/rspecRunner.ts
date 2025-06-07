@@ -5,6 +5,7 @@ import * as path from 'path';
 import { waitForRdbgSessionAndGetSocket } from './rdbgSockets';
 import { getOrCreateTerminal } from './utils';
 import { listRdbgSocks } from './utils';
+import { waitForRdbgSocket, startVSCodeDebugSession } from './appCommand';
 
 // Utility: determine if a line is a spec/test line
 /**
@@ -134,58 +135,16 @@ async function debugRubySpec(uri: vscode.Uri, line: number) {
     const command = line === 0
         ? `bundle exec rspec ${relativePath}`
         : `bundle exec rspec ${relativePath}:${line + 1}`;
+    
     // Start rdbg in the terminal
     const rdbgCmd = `bundle exec rdbg --open --session-name=_RSPEC --command -- ${command}`;
     rspecTerminal.sendText(rdbgCmd);
-    // Wait for the rdbg socket to appear
-    const pid = await new Promise<number>((resolve) => {
-        rspecTerminal!.processId.then(pid => resolve(pid!));
-    });
-
-    // Attempt to find the rdbg socket for this SESSION using listRdbgSocks
-    // Retry for up to 5 seconds before giving up
-    const maxRetries = 10; // 5 seconds with 500ms intervals
-    const retryInterval = 500; // 500ms
-    let socketFile: string | undefined;
-    let lastSocksResult: any;
-
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-        try {
-            const socksResult = await listRdbgSocks();
-            lastSocksResult = socksResult;
-            const lines = socksResult.stdout.split('\n').filter(Boolean);
-            socketFile = lines.find((line: string) => line.includes(`-_RSPEC`));
-            
-            if (socketFile) {
-                break; // Found the socket, exit the retry loop
-            }
-            
-            // Wait before the next attempt (except on the last attempt)
-            if (attempt < maxRetries - 1) {
-                await new Promise(resolve => setTimeout(resolve, retryInterval));
-            }
-        } catch (error) {
-            // If this is the last attempt, let the error propagate
-            if (attempt === maxRetries - 1) {
-                throw error;
-            }
-            // Otherwise, wait and try again
-            await new Promise(resolve => setTimeout(resolve, retryInterval));
-        }
-    }
-
-    if (!socketFile) {
-        throw new Error(`No rdbg socket found for _RSPEC session\nAvailable sockets:\n${lastSocksResult}`);
-    }
-    // Start VS Code debugger and attach to rdbg, passing socketPath as debugPort
-    await vscode.debug.startDebugging(undefined, {
-        type: 'rdbg',
-        name: `Attach to rdbg (RSpec)`,
-        request: 'attach',
-        debugPort: socketFile,
-        autoAttach: true,
-        cwd: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || process.cwd(),
-    });
+    
+    // Wait for the rdbg socket to appear and then start debugging
+    const socketFile = await waitForRdbgSocket('_RSPEC');
+    
+    // Start VS Code debugger and attach to rdbg
+    await startVSCodeDebugSession('RSpec', socketFile);
 }
 
 /**

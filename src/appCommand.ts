@@ -56,15 +56,13 @@ export function getDefaultAppConfig(): AppConfig {
             code: 'RAILS',
             description: 'Web Server',
             command: 'bundle exec rails s',
-            commandType: 'ruby',
-            wait: false
+            commandType: 'ruby'
           },
           {
             code: 'JOBS',
             description: 'Jobs Worker',
             command: 'bundle exec rake jobs:work',
-            commandType: 'ruby',
-            wait: false
+            commandType: 'ruby'
           }
         ]
     };
@@ -86,16 +84,17 @@ export function saveAppConfig(config: AppConfig): void {
 /**
  * Runs a command using ProcessTracker. Handles both Ruby (with rdbg) and shell commands.
  * @param command The command to run
+ * @param waitFlag Optional wait flag override for rdbg (defaults to '-n' for no wait)
  */
-export async function runCommand(command: Command) {
+export async function runCommand(command: Command, waitFlag: string = '-n') {
     return await FileLockManager.withLock(command.code, async () => {
         let commandToRun = command.command;
 
         if (command.commandType === 'ruby') {
             // Prepend rdbg to the command for debugging
-            const waitFlag = command.wait === false ? '-n' : '';
-            commandToRun = `bundle exec rdbg --open --session-name=${command.code} ${waitFlag} --command -- env -u HEADLESS ${command.command}`;
+            commandToRun = buildRdbgCommand(command.code, command.command, waitFlag);
         }
+        
         const childProcess = ProcessTracker.spawnAndTrack({
             code: command.code,
             command: commandToRun,
@@ -104,13 +103,40 @@ export async function runCommand(command: Command) {
         });
 
         // Show output channel if setting is enabled
-        const showOutput = vscode.workspace.getConfiguration('rubyToolkit').get('automaticallyShowOutputForCommand');
-        if (showOutput) {
-            const outputChannel = ProcessTracker.getOutputChannel(command.code);
-            if (outputChannel) {
-                outputChannel.show(true);
-            }
-        }
+        await showOutputChannelIfEnabled(command.code);
+    });
+}
+
+/**
+ * Runs a command in debug mode (with wait flag) using ProcessTracker.
+ * This starts the command, waits for the rdbg session to be available, then starts a debugging session.
+ * @param command The command to run in debug mode
+ */
+export async function runAndDebugCommand(command: Command) {
+    if (command.commandType !== 'ruby') {
+        // For shell commands, debugging is not supported
+        throw new Error('Run & Debug is only supported for Ruby commands');
+    }
+
+    return await FileLockManager.withLock(command.code, async () => {
+        // Start the command with wait flag (empty string means wait for debugger)
+        const commandToRun = buildRdbgCommand(command.code, command.command, '');
+        
+        const childProcess = ProcessTracker.spawnAndTrack({
+            code: command.code,
+            command: commandToRun,
+            args: [],
+            options: { stdio: 'ignore' }
+        });
+
+        // Show output channel if setting is enabled
+        await showOutputChannelIfEnabled(command.code);
+
+        // Wait for the rdbg socket to appear and then start debugging
+        const socketFile = await waitForRdbgSocket(command.code);
+
+        // Start VS Code debugger and attach to rdbg
+        await startVSCodeDebugSession(command.code, socketFile);
     });
 }
 
@@ -177,5 +203,87 @@ export async function debugCommand(command: Command) {
             autoAttach: true,
             cwd: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || process.cwd(),
         });
+    });
+}
+
+/**
+ * Helper function to build rdbg command for Ruby processes.
+ * @param sessionName The session name for rdbg
+ * @param baseCommand The base command to wrap with rdbg
+ * @param waitFlag Optional wait flag for rdbg (empty string means wait, '-n' means no wait)
+ * @returns The complete rdbg command string
+ */
+function buildRdbgCommand(sessionName: string, baseCommand: string, waitFlag: string = '-n'): string {
+    return `bundle exec rdbg --open --session-name=${sessionName} ${waitFlag} --command -- env -u HEADLESS ${baseCommand}`;
+}
+
+/**
+ * Helper function to show output channel if the setting is enabled.
+ * @param commandCode The command code to get the output channel for
+ */
+async function showOutputChannelIfEnabled(commandCode: string): Promise<void> {
+    const showOutput = vscode.workspace.getConfiguration('rubyToolkit').get('automaticallyShowOutputForCommand');
+    if (showOutput) {
+        const outputChannel = ProcessTracker.getOutputChannel(commandCode);
+        if (outputChannel) {
+            outputChannel.show(true);
+        }
+    }
+}
+
+/**
+ * Helper function to wait for an rdbg socket to appear and return it.
+ * @param sessionName The session name to look for in the socket list
+ * @param maxRetries Maximum number of retry attempts (default: 10)
+ * @param retryInterval Interval between retries in milliseconds (default: 500)
+ * @returns The socket file path
+ * @throws Error if socket is not found after all retries
+ */
+export async function waitForRdbgSocket(sessionName: string, maxRetries: number = 10, retryInterval: number = 500): Promise<string> {
+    let socketFile: string | undefined;
+    let lastSocksResult: any;
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+            const socksResult = await listRdbgSocks();
+            lastSocksResult = socksResult;
+            const lines = socksResult.stdout.split('\n').filter(Boolean);
+            socketFile = lines.find((line: string) => line.includes(`-${sessionName}`));
+            
+            if (socketFile) {
+                return socketFile;
+            }
+            
+            // Wait before the next attempt (except on the last attempt)
+            if (attempt < maxRetries - 1) {
+                await new Promise(resolve => setTimeout(resolve, retryInterval));
+            }
+        } catch (error) {
+            // If this is the last attempt, let the error propagate
+            if (attempt === maxRetries - 1) {
+                throw new Error(`Failed to find rdbg socket for ${sessionName} session after ${maxRetries} attempts\nLast error: ${error}\nAvailable sockets:\n${lastSocksResult?.stdout || 'Unable to list sockets'}`);
+            }
+            // Otherwise, wait and try again
+            await new Promise(resolve => setTimeout(resolve, retryInterval));
+        }
+    }
+
+    throw new Error(`No rdbg socket found for ${sessionName} session\nAvailable sockets:\n${lastSocksResult?.stdout || 'Unable to list sockets'}`);
+}
+
+/**
+ * Helper function to start a VS Code debug session attached to rdbg.
+ * @param sessionName The session name for the debug session
+ * @param socketFile The rdbg socket file path
+ * @returns Promise that resolves when the debug session starts
+ */
+export async function startVSCodeDebugSession(sessionName: string, socketFile: string): Promise<void> {
+    await vscode.debug.startDebugging(undefined, {
+        type: 'rdbg',
+        name: `Attach to rdbg (${sessionName})`,
+        request: 'attach',
+        debugPort: socketFile,
+        autoAttach: true,
+        cwd: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || process.cwd(),
     });
 }

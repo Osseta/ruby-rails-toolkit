@@ -27,15 +27,13 @@ suite('CommandStateManager Tests', () => {
                 code: 'TEST_CMD_1',
                 description: 'Test Command 1',
                 command: 'rails server',
-                commandType: 'ruby',
-                wait: false
+                commandType: 'ruby'
             },
             {
                 code: 'TEST_CMD_2',
                 description: 'Test Command 2',
                 command: 'echo "test"',
-                commandType: 'shell',
-                wait: false
+                commandType: 'shell'
             }
         ];
         

@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { runCommand, stopCommand, debugCommand, loadAppConfig, stopAllCommands } from './appCommand';
+import { runCommand, stopCommand, debugCommand, loadAppConfig, stopAllCommands, runAndDebugCommand } from './appCommand';
 import { ProcessTracker } from './processTracker';
 import { CommandStateManager } from './commandStateManager';
 import type { Commands, Command, ProcessState } from './types';
@@ -208,6 +208,12 @@ export function registerAppRunnerTreeView(context: vscode.ExtensionContext) {
             await provider.refresh();
         }
     }));
+    context.subscriptions.push(vscode.commands.registerCommand('appRunner.runAndDebug', async (item: AppCommandTreeItem) => {
+        if (item.cmd) {
+            await runAndDebugCommand(item.cmd);
+            await provider.refresh();
+        }
+    }));
     context.subscriptions.push(vscode.commands.registerCommand('appRunner.stop', async (item: AppCommandTreeItem) => {
         if (item.cmd) {
             await stopCommand(item.cmd);
@@ -259,6 +265,15 @@ export function registerAppRunnerTreeView(context: vscode.ExtensionContext) {
                 description: "Start the command",
                 detail: cmd.command
             });
+            
+            // Add Run & Debug option for Ruby commands only
+            if (cmd.commandType === 'ruby') {
+                actions.push({
+                    label: "$(debug-start) Run & Debug",
+                    description: "Start the command and wait for debugger",
+                    detail: cmd.command
+                });
+            }
         } else if (state.exists && !state.debugActive) {
             // When running but not debugging: Stop, Debug (for Ruby), Show Output
             actions.push({
@@ -306,7 +321,10 @@ export function registerAppRunnerTreeView(context: vscode.ExtensionContext) {
         }
         
         // Execute the selected action
-        if (selectedAction.label.includes('Run')) {
+        if (selectedAction.label.includes('Run & Debug')) {
+            await runAndDebugCommand(cmd);
+            await provider.refresh();
+        } else if (selectedAction.label.includes('Run')) {
             await runCommand(cmd);
             await provider.refresh();
         } else if (selectedAction.label.includes('Debug')) {

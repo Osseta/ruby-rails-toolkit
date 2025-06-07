@@ -38,7 +38,6 @@ suite('Crashed Command Display Tests', () => {
             command: 'rails server',
             code: 'server',
             commandType: 'ruby',
-            wait: false
         };
 
         const crashedState: ProcessState = {
@@ -65,7 +64,6 @@ suite('Crashed Command Display Tests', () => {
             command: 'rails server',
             code: 'server',
             commandType: 'ruby',
-            wait: false
         };
 
         const normalState: ProcessState = {
@@ -95,7 +93,6 @@ suite('Crashed Command Display Tests', () => {
             command: 'rails server',
             code: 'server',
             commandType: 'ruby',
-            wait: false
         };
 
         const crashedState: ProcessState = {
@@ -119,7 +116,6 @@ suite('Crashed Command Display Tests', () => {
             command: 'rails server',
             code: 'server',
             commandType: 'ruby',
-            wait: false
         };
 
         const runningState: ProcessState = {
@@ -142,7 +138,6 @@ suite('Crashed Command Display Tests', () => {
             command: 'rails server',
             code: 'server',
             commandType: 'ruby',
-            wait: false
         };
 
         const stoppedState: ProcessState = {
@@ -180,7 +175,6 @@ suite('Different Workspace Display Tests', () => {
             command: 'rails server',
             code: 'server',
             commandType: 'ruby',
-            wait: false
         };
 
         const differentWorkspaceState: ProcessState = {
@@ -207,7 +201,6 @@ suite('Different Workspace Display Tests', () => {
             command: 'rails server',
             code: 'server',
             commandType: 'ruby',
-            wait: false
         };
 
         const sameWorkspaceState: ProcessState = {
@@ -235,7 +228,6 @@ suite('Different Workspace Display Tests', () => {
             command: 'rails server',
             code: 'server',
             commandType: 'ruby',
-            wait: false
         };
 
         const stoppedState: ProcessState = {
@@ -263,7 +255,6 @@ suite('Different Workspace Display Tests', () => {
             command: 'rails server',
             code: 'server',
             commandType: 'ruby',
-            wait: false
         };
 
         const differentWorkspaceState: ProcessState = {
@@ -295,7 +286,6 @@ suite('Different Workspace Display Tests', () => {
             command: 'rails server',
             code: 'server',
             commandType: 'ruby',
-            wait: false
         };
 
         const sameWorkspaceState: ProcessState = {
@@ -325,7 +315,6 @@ suite('Different Workspace Display Tests', () => {
             command: 'rails server',
             code: 'server',
             commandType: 'ruby',
-            wait: false
         };
 
         const differentWorkspaceState: ProcessState = {
@@ -355,7 +344,6 @@ suite('Different Workspace Display Tests', () => {
             command: 'rails server',
             code: 'server',
             commandType: 'ruby',
-            wait: false
         };
 
         const sameWorkspaceState: ProcessState = {
@@ -385,7 +373,6 @@ suite('Different Workspace Display Tests', () => {
             command: 'rails server',
             code: 'server',
             commandType: 'ruby',
-            wait: false
         };
 
         const differentWorkspaceState: ProcessState = {
@@ -415,7 +402,6 @@ suite('Different Workspace Display Tests', () => {
             command: 'rails server',
             code: 'server',
             commandType: 'ruby',
-            wait: false
         };
 
         const sameWorkspaceState: ProcessState = {
@@ -445,7 +431,6 @@ suite('Different Workspace Display Tests', () => {
             command: 'rails server',
             code: 'server',
             commandType: 'ruby',
-            wait: false
         };
 
         const noWorkspaceHashState: ProcessState = {
@@ -491,7 +476,6 @@ suite('Different Workspace Display Tests', () => {
             command: 'rails server',
             code: 'server',
             commandType: 'ruby',
-            wait: false
         };
 
         const crashedDifferentWorkspaceState: ProcessState = {

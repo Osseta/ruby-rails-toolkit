@@ -41,8 +41,7 @@ suite('AppRunner', () => {
             code: 'TEST_CMD',
             description: 'Test Command',
             command: 'echo "test"',
-            commandType: 'shell',
-            wait: true
+            commandType: 'shell'
         };
 
         test('should include canRun when process not running and not crashed', () => {
@@ -247,6 +246,27 @@ suite('AppRunner', () => {
         test('should return undefined when output channel does not exist', () => {
             const outputChannel = ProcessTracker.getOutputChannel('NONEXISTENT');
             assert.strictEqual(outputChannel, undefined);
+        });
+    });
+
+    suite('runAndDebugCommand', () => {
+        test('should reject shell commands', async () => {
+            const shellCommand: Command = {
+                code: 'TEST_SHELL',
+                description: 'Test Shell Command',
+                command: 'echo "test"',
+                commandType: 'shell'
+            };
+
+            const { runAndDebugCommand } = await import('../appCommand');
+            
+            try {
+                await runAndDebugCommand(shellCommand);
+                assert.fail('Expected runAndDebugCommand to throw for shell commands');
+            } catch (error) {
+                assert.ok(error instanceof Error);
+                assert.ok(error.message.includes('Run & Debug is only supported for Ruby commands'));
+            }
         });
     });
 });

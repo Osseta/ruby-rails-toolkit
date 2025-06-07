@@ -30,7 +30,6 @@ export type Command = {
   description: string;
   command: string;
   commandType: 'ruby' | 'shell';
-  wait: boolean;
 }
 
 export type Commands = Command[];

@@ -37,16 +37,14 @@ suite('QuickPick Logic Tests', () => {
         code: 'TEST_RUBY_CMD',
         description: 'Test Ruby Command',
         command: 'rails server',
-        commandType: 'ruby',
-        wait: true
+        commandType: 'ruby'
     };
 
     const shellCommand: Command = {
         code: 'TEST_SHELL_CMD',
         description: 'Test Shell Command',
         command: 'echo "test"',
-        commandType: 'shell',
-        wait: true
+        commandType: 'shell'
     };
 
     suite('TreeItem contextValue matches new button display rules', () => {

@@ -80,7 +80,8 @@
       "appRunner": [
         {
           "id": "appRunnerTreeView",
-          "name": "App Runner"
+          "name": "App Runner",
+          "icon": "$(run)"
         }
       ]
     },
@@ -103,6 +104,11 @@
         "command": "appRunner.run",
         "title": "Run App Command",
         "icon": "$(run)"
+      },
+      {
+        "command": "appRunner.runAndDebug",
+        "title": "Run & Debug App Command",
+        "icon": "$(debug-alt)"
       },
       {
         "command": "appRunner.stop",
