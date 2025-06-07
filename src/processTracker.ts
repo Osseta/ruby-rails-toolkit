@@ -209,7 +209,7 @@ export class ProcessTracker {
             this.outputChannels.set(code, outputChannel);
         } else {
             // Clear existing output channel contents when starting a new process (if setting is enabled)
-            const config = vscode.workspace.getConfiguration('runRspec');
+            const config = vscode.workspace.getConfiguration('rubyToolkit');
             const clearOutputOnRun = config.get<boolean>('clearOutputChannelOnProcessRun', true);
             if (clearOutputOnRun) {
                 outputChannel.clear();
@@ -419,7 +419,7 @@ export class ProcessTracker {
     static preprocessOutputData(data: string, code?: string): string {
         // Check if data contains server error pattern and show output channel
         if (data.includes('Completed 500 Internal Server Error') && code) {
-            const config = vscode.workspace.getConfiguration('runRspec');
+            const config = vscode.workspace.getConfiguration('rubyToolkit');
             const showOn500Errors = config.get<boolean>('showProcessOutputOnServer500Errors', true);
             if (showOn500Errors) {
                 this.outputChannels.get(code)?.show(true);

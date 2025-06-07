@@ -104,7 +104,7 @@ export async function runCommand(command: Command) {
         });
 
         // Show output channel if setting is enabled
-        const showOutput = vscode.workspace.getConfiguration('runRspec').get('automaticallyShowOutputForCommand');
+        const showOutput = vscode.workspace.getConfiguration('rubyToolkit').get('automaticallyShowOutputForCommand');
         if (showOutput) {
             const outputChannel = ProcessTracker.getOutputChannel(command.code);
             if (outputChannel) {

@@ -327,7 +327,7 @@ suite('ProcessTracker', () => {
             const configMock = {
                 get: sandbox.stub().withArgs('showProcessOutputOnServer500Errors', true).returns(true)
             };
-            (vscode.workspace.getConfiguration as any).withArgs('runRspec').returns(configMock);
+            (vscode.workspace.getConfiguration as any).withArgs('rubyToolkit').returns(configMock);
 
             // Mock output channel
             const outputChannelMock = {
@@ -350,7 +350,7 @@ suite('ProcessTracker', () => {
             const configMock = {
                 get: sandbox.stub().withArgs('showProcessOutputOnServer500Errors', true).returns(false)
             };
-            (vscode.workspace.getConfiguration as any).withArgs('runRspec').returns(configMock);
+            (vscode.workspace.getConfiguration as any).withArgs('rubyToolkit').returns(configMock);
 
             // Mock output channel
             const outputChannelMock = {
@@ -372,7 +372,7 @@ suite('ProcessTracker', () => {
             const configMock = {
                 get: sandbox.stub().withArgs('showProcessOutputOnServer500Errors', true).returns(true)
             };
-            (vscode.workspace.getConfiguration as any).withArgs('runRspec').returns(configMock);
+            (vscode.workspace.getConfiguration as any).withArgs('rubyToolkit').returns(configMock);
 
             // Mock output channel
             const outputChannelMock = {
@@ -402,7 +402,7 @@ suite('ProcessTracker', () => {
             const configMock = {
                 get: sandbox.stub().withArgs('showProcessOutputOnServer500Errors', true).returns(true)
             };
-            (vscode.workspace.getConfiguration as any).withArgs('runRspec').returns(configMock);
+            (vscode.workspace.getConfiguration as any).withArgs('rubyToolkit').returns(configMock);
 
             // Mock output channel
             const outputChannelMock = {
@@ -440,7 +440,7 @@ suite('ProcessTracker', () => {
             const configMock = {
                 get: sandbox.stub().withArgs('clearOutputChannelOnProcessRun', true).returns(true)
             };
-            (vscode.workspace.getConfiguration as any).withArgs('runRspec').returns(configMock);
+            (vscode.workspace.getConfiguration as any).withArgs('rubyToolkit').returns(configMock);
 
             // Create an output channel that already exists
             const mockOutputChannel = {
@@ -462,7 +462,7 @@ suite('ProcessTracker', () => {
 
             // Verify the configuration was checked and clear was called
             assert.strictEqual((vscode.workspace.getConfiguration as any).callCount, 1);
-            assert.strictEqual((vscode.workspace.getConfiguration as any).getCall(0).args[0], 'runRspec');
+            assert.strictEqual((vscode.workspace.getConfiguration as any).getCall(0).args[0], 'rubyToolkit');
             assert.strictEqual(configMock.get.callCount, 1);
             assert.strictEqual(configMock.get.getCall(0).args[0], 'clearOutputChannelOnProcessRun');
             assert.strictEqual(configMock.get.getCall(0).args[1], true);
@@ -474,7 +474,7 @@ suite('ProcessTracker', () => {
             const configMock = {
                 get: sandbox.stub().withArgs('clearOutputChannelOnProcessRun', true).returns(false)
             };
-            (vscode.workspace.getConfiguration as any).withArgs('runRspec').returns(configMock);
+            (vscode.workspace.getConfiguration as any).withArgs('rubyToolkit').returns(configMock);
 
             // Create an output channel that already exists
             const mockOutputChannel = {
@@ -496,7 +496,7 @@ suite('ProcessTracker', () => {
 
             // Verify the configuration was checked but clear was NOT called
             assert.strictEqual((vscode.workspace.getConfiguration as any).callCount, 1);
-            assert.strictEqual((vscode.workspace.getConfiguration as any).getCall(0).args[0], 'runRspec');
+            assert.strictEqual((vscode.workspace.getConfiguration as any).getCall(0).args[0], 'rubyToolkit');
             assert.strictEqual(configMock.get.callCount, 1);
             assert.strictEqual(configMock.get.getCall(0).args[0], 'clearOutputChannelOnProcessRun');
             assert.strictEqual(configMock.get.getCall(0).args[1], true);
@@ -508,7 +508,7 @@ suite('ProcessTracker', () => {
             const configMock = {
                 get: sandbox.stub().withArgs('clearOutputChannelOnProcessRun', true).returns(true)
             };
-            (vscode.workspace.getConfiguration as any).withArgs('runRspec').returns(configMock);
+            (vscode.workspace.getConfiguration as any).withArgs('rubyToolkit').returns(configMock);
 
             // Ensure no output channel exists for this code
             (ProcessTracker as any).outputChannels.delete(code);

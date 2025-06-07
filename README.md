@@ -80,8 +80,21 @@ Create `.vscode/app_commands.json` in your project root to define custom command
 ```
 
 ### Extension Settings
-- `runRspec.automaticallyShowOutputForCommand`: Automatically display output when commands are run (default: `true`)
-- `runRspec.showProcessOutputOnServer500Errors`: Show process output when 500 errors are detected (default: `true`)
+- `rubyToolkit.automaticallyShowOutputForCommand`: Automatically display output when commands are run (default: `true`)
+- `rubyToolkit.showProcessOutputOnServer500Errors`: Show process output when 500 errors are detected (default: `true`)
+- `rubyToolkit.clearOutputChannelOnProcessRun`: Clear the output channel when starting a new process run (default: `true`)
+
+### Output Channel Behavior
+The extension creates dedicated output channels for each process, providing isolated logging for better debugging and monitoring:
+
+**Clear Output Channel Setting**: When `rubyToolkit.clearOutputChannelOnProcessRun` is enabled (default), the output channel is cleared each time you restart a process. This provides a clean view of the current run without previous logs.
+
+- **Enabled (default)**: Each process restart shows only the new output, making it easier to focus on current issues
+- **Disabled**: Output accumulates across multiple runs, useful for comparing behavior between runs or tracking changes over time
+
+**Automatic Error Display**: When `rubyToolkit.showProcessOutputOnServer500Errors` is enabled (default), the output channel automatically appears when a 500 Internal Server Error is detected in Rails logs, helping you quickly identify and debug server issues.
+
+**File Path Integration**: All file paths in output are automatically converted to clickable VS Code links, allowing instant navigation to source files, stack traces, and error locations.
 
 ## 🎯 Usage Examples
 
@@ -126,8 +139,15 @@ The extension provides sophisticated debugging capabilities:
 - **Run**: Start stopped processes
 - **Stop**: Terminate running processes  
 - **Debug**: Attach debugger to running Ruby processes
-- **Show Output**: View process logs and output
+- **Show Output**: View process logs and output (automatically cleared on restart by default)
 - **Quick Actions**: Right-click any process for context menu
+
+### Output Management
+Each process gets its own dedicated output channel with intelligent behavior:
+- **Clean Runs**: Output channels are cleared by default when restarting processes for focused debugging
+- **Persistent Logs**: Disable the clear setting to accumulate output across multiple runs for comparison
+- **Error Detection**: Automatic display of output when Rails 500 errors are detected
+- **Clickable Paths**: File paths in output become clickable links for instant navigation
 
 ## 🐛 Troubleshooting
 
@@ -135,9 +155,8 @@ The extension provides sophisticated debugging capabilities:
 - **No CodeLens buttons**: Ensure file ends with `_spec.rb` and contains valid RSpec syntax
 - **Debug not working**: Install `rdbg` gem (`gem install debug`) and ensure it's in your Gemfile
 - **Process not stopping**: Check App Runner for crashed processes and use "Show Output" to view errors
-
-### File Path Integration
-The extension automatically converts file paths in output to clickable VS Code links, making it easy to navigate to errors and stack traces.
+- **Missing previous output**: If you need to see logs from previous runs, disable `rubyToolkit.clearOutputChannelOnProcessRun` in settings
+- **Output not appearing**: Check that `rubyToolkit.automaticallyShowOutputForCommand` is enabled in settings
 
 ## 📄 License
 

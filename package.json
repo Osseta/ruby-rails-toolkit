@@ -44,19 +44,19 @@
   "main": "./out/extension.js",
   "contributes": {
     "configuration": {
-      "title": "Run RSpec",
+      "title": "Ruby & Rails Developer Toolkit",
       "properties": {
-        "runRspec.automaticallyShowOutputForCommand": {
+        "rubyToolkit.automaticallyShowOutputForCommand": {
           "type": "boolean",
           "default": true,
           "description": "Automatically show output for a command when it is run."
         },
-        "runRspec.showProcessOutputOnServer500Errors": {
+        "rubyToolkit.showProcessOutputOnServer500Errors": {
           "type": "boolean",
           "default": true,
           "description": "Show process output on server 500 errors"
         },
-        "runRspec.clearOutputChannelOnProcessRun": {
+        "rubyToolkit.clearOutputChannelOnProcessRun": {
           "type": "boolean",
           "default": true,
           "description": "Clear output channel on process run"
