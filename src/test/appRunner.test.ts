@@ -133,7 +133,8 @@ suite('AppRunner', () => {
                 show: sandbox.stub(),
                 append: sandbox.stub(),
                 appendLine: sandbox.stub(),
-                dispose: sandbox.stub()
+                dispose: sandbox.stub(),
+                clear: sinon.stub(),
             };
             sandbox.stub(vscode.window, 'createOutputChannel').returns(mockOutputChannel as any);
 
@@ -185,7 +186,8 @@ suite('AppRunner', () => {
                 show: sandbox.stub(),
                 append: sandbox.stub(),
                 appendLine: sandbox.stub(),
-                dispose: sandbox.stub()
+                dispose: sandbox.stub(),
+                clear: sandbox.stub(),
             };
             sandbox.stub(vscode.window, 'createOutputChannel').returns(mockOutputChannel as any);
 
@@ -220,6 +222,19 @@ suite('AppRunner', () => {
                 command: 'echo "test"',
                 args: []
             });
+
+            // First spawn should not call clear (new output channel)
+            assert.strictEqual(mockOutputChannel.clear.callCount, 0);
+
+            // Spawn again with the same code to test reusing existing output channel
+            ProcessTracker.spawnAndTrack({
+                code: 'TEST_GET_OUTPUT',
+                command: 'echo "test2"',
+                args: []
+            });
+
+            // Second spawn should call clear (reusing existing output channel)
+            assert.strictEqual(mockOutputChannel.clear.callCount, 1);
 
             const outputChannel = ProcessTracker.getOutputChannel('TEST_GET_OUTPUT');
             assert.ok(outputChannel);

@@ -33,7 +33,8 @@ suite('Process Crash Detection', () => {
             show: sandbox.stub(),
             append: sandbox.stub(),
             appendLine: sandbox.stub(),
-            dispose: sandbox.stub()
+            dispose: sandbox.stub(),
+            clear: sinon.stub(),
         };
         
         // Ensure vscode.window exists

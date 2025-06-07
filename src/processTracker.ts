@@ -207,6 +207,9 @@ export class ProcessTracker {
         if (!outputChannel) {
             outputChannel = vscode.window.createOutputChannel(`Run: ${code}`);
             this.outputChannels.set(code, outputChannel);
+        } else {
+            // Clear existing output channel contents when starting a new process
+            outputChannel.clear();
         }
 
         // Prepare environment: copy process.env and remove specific variables

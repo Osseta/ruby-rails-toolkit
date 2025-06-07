@@ -8,6 +8,7 @@ import * as sinon from 'sinon';
 import * as utils from '../utils';
 import { EventEmitter } from 'events';
 import * as childProcess from 'child_process';
+import { clear } from 'console';
 
 suite('ProcessTracker', () => {
     const code = 'TESTCMD';
@@ -28,7 +29,8 @@ suite('ProcessTracker', () => {
             show: sinon.stub(),
             append: sinon.stub(),
             appendLine: sinon.stub(),
-            dispose: sinon.stub()
+            dispose: sinon.stub(),
+            clear: sinon.stub(),
         };
         if (!vscode.window.createOutputChannel) {
             (vscode.window as any).createOutputChannel = () => mockOutputChannel;
