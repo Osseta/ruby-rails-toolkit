@@ -1,4 +1,4 @@
-# Ruby & Rails Development Toolkit
+# Ruby & Rails Developer Toolkit
 
 A comprehensive VS Code extension for Ruby and Rails development that provides seamless testing, application debugging, and Rails server management. This toolkit combines powerful testing capabilities with an intuitive application runner for efficient Rails development workflows.
 

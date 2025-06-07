@@ -1,6 +1,6 @@
 {
   "name": "ruby-rails-toolkit",
-  "displayName": "Ruby & Rails Development Toolkit",
+  "displayName": "Ruby & Rails Developer Toolkit",
   "description": "A comprehensive VS Code toolkit for Ruby and Rails development with testing, debugging, and process management",
   "version": "0.0.1",
   "publisher": "osseta",
@@ -24,7 +24,7 @@
     "rspec",
     "testing",
     "debugging",
-    "development toolkit",
+    "Developer toolkit",
     "ruby development",
     "rails development",
     "unit testing",
