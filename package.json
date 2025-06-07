@@ -38,6 +38,10 @@
   "categories": [
     "Other"
   ],
+  "extensionDependencies": [
+    "koichisasada.vscode-rdbg",
+    "shopify.ruby-lsp"
+  ],
   "activationEvents": [
     "workspaceContains:**/*_spec.rb"
   ],
