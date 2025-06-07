@@ -72,7 +72,7 @@
         {
           "id": "appRunner",
           "title": "App Runner",
-          "icon": "./media/light/run.svg"
+          "icon": "$(play)"
         }
       ]
     },
