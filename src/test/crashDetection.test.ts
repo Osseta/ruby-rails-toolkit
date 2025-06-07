@@ -326,14 +326,6 @@ suite('Process Crash Detection', () => {
         const stopProcessSpy = ProcessTracker.stopProcess as sinon.SinonSpy;
         stopProcessSpy.resetHistory(); // Reset call history for this test
         
-        // Create test configuration
-        const testConfig = {
-            commands: [
-                { code: 'TEST_STOP_ALL_1', description: 'Test 1', command: 'echo "test1"', commandType: 'shell' as const, wait: false },
-                { code: 'TEST_STOP_ALL_2', description: 'Test 2', command: 'echo "test2"', commandType: 'shell' as const, wait: false }
-            ]
-        };
-
         // Spawn multiple processes
         const codes = ['TEST_STOP_ALL_1', 'TEST_STOP_ALL_2'];
         const children = codes.map(code => 
@@ -345,8 +337,8 @@ suite('Process Crash Detection', () => {
             assert.ok(ProcessTracker.isRunning(code), `Process ${code} should be running`);
         });
 
-        // Call stopAllCommands with test configuration
-        await appCommand.stopAllCommands(testConfig);
+        // Call stopAllCommands (now stops all processes regardless of config)
+        await appCommand.stopAllCommands();
 
         // Verify stopProcess was called for each running process
         assert.strictEqual(stopProcessSpy.callCount, codes.length, 

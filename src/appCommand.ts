@@ -128,17 +128,18 @@ export async function stopCommand(command: Command) {
  * Stops all running commands.
  * Used when the "stop all" button is clicked.
  * Each stopped command will have its termination reason set to 'user-requested'.
- * @param config Optional configuration to use. If not provided, loads from file.
+ * This function looks at all pid files and stops all processes if they are running,
+ * regardless of whether they are configured in the current workspace.
  */
-export async function stopAllCommands(config?: AppConfig): Promise<void> {
-    const appConfig = config || loadAppConfig();
+export async function stopAllCommands(): Promise<void> {
+    // Get all running process codes from pid files
+    const runningCodes = ProcessTracker.listRunningCodes();
     
-    // Stop all commands in parallel, each with its own lock
-    const stopPromises = appConfig.commands.map(async (cmd) => {
-        const isRunning = ProcessTracker.isRunning(cmd.code);
-        if (isRunning) {
-            await stopCommand(cmd);
-        }
+    // Stop all running processes in parallel, each with its own lock
+    const stopPromises = runningCodes.map(async (code) => {
+        await FileLockManager.withLock(code, async () => {
+            ProcessTracker.stopProcess(code);
+        });
     });
     
     await Promise.all(stopPromises);
