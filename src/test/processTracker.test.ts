@@ -53,6 +53,16 @@ suite('ProcessTracker', () => {
             uri: { fsPath: '/mock/workspace' }
         }]);
         
+        // Mock vscode.workspace.getConfiguration
+        if (!vscode.workspace.getConfiguration) {
+            (vscode.workspace as any).getConfiguration = () => ({ get: () => true });
+        }
+        if (typeof vscode.workspace.getConfiguration === 'function' && !(vscode.workspace.getConfiguration as any).isSinonProxy) {
+            sinon.stub(vscode.workspace, 'getConfiguration').returns({
+                get: sinon.stub().returns(true) // Default to true for clearOutputChannelOnProcessRun
+            } as any);
+        }
+        
         // Mock child_process.spawn to avoid actual process spawning
         const mockChild = new EventEmitter() as any;
         mockChild.pid = 12345;
@@ -117,8 +127,14 @@ suite('ProcessTracker', () => {
                 uri: { fsPath: '/mock/workspace' }
             }]);
             
-            // Mock vscode.workspace.getConfiguration for preprocessing tests only if not already done
-            if (!vscode.workspace.getConfiguration || typeof vscode.workspace.getConfiguration === 'function') {
+            // Mock vscode.workspace.getConfiguration for preprocessing tests - work with existing stub
+            if ((vscode.workspace.getConfiguration as any).isSinonProxy) {
+                // getConfiguration is already stubbed, just reset it for this suite
+                (vscode.workspace.getConfiguration as sinon.SinonStub).resetBehavior();
+                (vscode.workspace.getConfiguration as sinon.SinonStub).returns({
+                    get: sandbox.stub().returns(true)
+                } as any);
+            } else {
                 vscode.workspace.getConfiguration = sandbox.stub().returns({
                     get: sandbox.stub().returns(true)
                 } as any);
@@ -402,6 +418,124 @@ suite('ProcessTracker', () => {
             // Since the config returns the default value (true), the output channel should be shown
             assert.strictEqual(outputChannelMock.show.callCount, 1);
             assert.strictEqual(outputChannelMock.show.getCall(0).args[0], true);
+        });
+    });
+
+    suite('Clear Output Channel Configuration', () => {
+        let sandbox: sinon.SinonSandbox;
+
+        setup(() => {
+            sandbox = sinon.createSandbox();
+            
+            // getConfiguration is already stubbed in main setup, just reset and configure it for this suite
+            (vscode.workspace.getConfiguration as sinon.SinonStub).resetBehavior();
+        });
+
+        teardown(() => {
+            sandbox.restore();
+        });
+
+        test('should clear output channel when configuration is true (default)', () => {
+            // Mock configuration to return true (default)
+            const configMock = {
+                get: sandbox.stub().withArgs('clearOutputChannelOnProcessRun', true).returns(true)
+            };
+            (vscode.workspace.getConfiguration as any).withArgs('runRspec').returns(configMock);
+
+            // Create an output channel that already exists
+            const mockOutputChannel = {
+                show: sandbox.stub(),
+                append: sandbox.stub(),
+                appendLine: sandbox.stub(),
+                dispose: sandbox.stub(),
+                clear: sandbox.stub(),
+            };
+            (ProcessTracker as any).outputChannels.set(code, mockOutputChannel);
+
+            // Spawn and track a process (this should reuse the existing output channel)
+            ProcessTracker.spawnAndTrack({
+                code,
+                command: 'echo',
+                args: ['test'],
+                options: {}
+            });
+
+            // Verify the configuration was checked and clear was called
+            assert.strictEqual((vscode.workspace.getConfiguration as any).callCount, 1);
+            assert.strictEqual((vscode.workspace.getConfiguration as any).getCall(0).args[0], 'runRspec');
+            assert.strictEqual(configMock.get.callCount, 1);
+            assert.strictEqual(configMock.get.getCall(0).args[0], 'clearOutputChannelOnProcessRun');
+            assert.strictEqual(configMock.get.getCall(0).args[1], true);
+            assert.strictEqual(mockOutputChannel.clear.callCount, 1);
+        });
+
+        test('should not clear output channel when configuration is false', () => {
+            // Mock configuration to return false
+            const configMock = {
+                get: sandbox.stub().withArgs('clearOutputChannelOnProcessRun', true).returns(false)
+            };
+            (vscode.workspace.getConfiguration as any).withArgs('runRspec').returns(configMock);
+
+            // Create an output channel that already exists
+            const mockOutputChannel = {
+                show: sandbox.stub(),
+                append: sandbox.stub(),
+                appendLine: sandbox.stub(),
+                dispose: sandbox.stub(),
+                clear: sandbox.stub(),
+            };
+            (ProcessTracker as any).outputChannels.set(code, mockOutputChannel);
+
+            // Spawn and track a process (this should reuse the existing output channel)
+            ProcessTracker.spawnAndTrack({
+                code,
+                command: 'echo',
+                args: ['test'],
+                options: {}
+            });
+
+            // Verify the configuration was checked but clear was NOT called
+            assert.strictEqual((vscode.workspace.getConfiguration as any).callCount, 1);
+            assert.strictEqual((vscode.workspace.getConfiguration as any).getCall(0).args[0], 'runRspec');
+            assert.strictEqual(configMock.get.callCount, 1);
+            assert.strictEqual(configMock.get.getCall(0).args[0], 'clearOutputChannelOnProcessRun');
+            assert.strictEqual(configMock.get.getCall(0).args[1], true);
+            assert.strictEqual(mockOutputChannel.clear.callCount, 0);
+        });
+
+        test('should create new output channel without clearing when it does not exist', () => {
+            // Mock configuration (should not matter since it's a new channel)
+            const configMock = {
+                get: sandbox.stub().withArgs('clearOutputChannelOnProcessRun', true).returns(true)
+            };
+            (vscode.workspace.getConfiguration as any).withArgs('runRspec').returns(configMock);
+
+            // Ensure no output channel exists for this code
+            (ProcessTracker as any).outputChannels.delete(code);
+
+            // Mock the createOutputChannel method
+            const mockOutputChannel = {
+                show: sandbox.stub(),
+                append: sandbox.stub(),
+                appendLine: sandbox.stub(),
+                dispose: sandbox.stub(),
+                clear: sandbox.stub(),
+            };
+            (vscode.window.createOutputChannel as any).returns(mockOutputChannel);
+
+            // Spawn and track a process (this should create a new output channel)
+            ProcessTracker.spawnAndTrack({
+                code,
+                command: 'echo',
+                args: ['test'],
+                options: {}
+            });
+
+            // Verify a new output channel was created and clear was NOT called (since it's new)
+            assert.strictEqual((vscode.window.createOutputChannel as any).callCount, 1);
+            assert.strictEqual(mockOutputChannel.clear.callCount, 0);
+            // Configuration should not be checked for new channels
+            assert.strictEqual((vscode.workspace.getConfiguration as any).callCount, 0);
         });
     });
 });

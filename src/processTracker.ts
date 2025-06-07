@@ -208,8 +208,12 @@ export class ProcessTracker {
             outputChannel = vscode.window.createOutputChannel(`Run: ${code}`);
             this.outputChannels.set(code, outputChannel);
         } else {
-            // Clear existing output channel contents when starting a new process
-            outputChannel.clear();
+            // Clear existing output channel contents when starting a new process (if setting is enabled)
+            const config = vscode.workspace.getConfiguration('runRspec');
+            const clearOutputOnRun = config.get<boolean>('clearOutputChannelOnProcessRun', true);
+            if (clearOutputOnRun) {
+                outputChannel.clear();
+            }
         }
 
         // Prepare environment: copy process.env and remove specific variables

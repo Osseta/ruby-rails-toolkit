@@ -55,6 +55,11 @@
           "type": "boolean",
           "default": true,
           "description": "Show process output on server 500 errors"
+        },
+        "runRspec.clearOutputChannelOnProcessRun": {
+          "type": "boolean",
+          "default": true,
+          "description": "Clear output channel on process run"
         }
       }
     },
