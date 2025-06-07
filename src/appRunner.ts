@@ -27,13 +27,13 @@ export class AppCommandTreeItem extends vscode.TreeItem {
         const isDifferentWorkspace = safeState.exists && safeState.workspaceHash && safeState.workspaceHash !== currentWorkspace;
         
         // Add red styling for crashed commands
-        if (safeState.terminationReason === 'crashed') {
+        if (isDifferentWorkspace) {
+            this.description = '(DIFFERENT WORKSPACE)';
+        } else if (safeState.terminationReason === 'crashed') {
             // Use a prominent red description to make the crash status clear
             this.description = '(CRASHED)';
             // Set resource URI for potential future styling
             this.resourceUri = vscode.Uri.parse(`crashed-command:${cmd.code}`);
-        } else if (isDifferentWorkspace) {
-            this.description = '(DIFFERENT WORKSPACE)';
         }
         
         // Set icon based on locked state first, then running state and termination reason
