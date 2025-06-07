@@ -167,8 +167,8 @@ suite('CommandStateManager Tests', () => {
             exists: false,
             debugActive: false,
             terminationReason: 'none',
-            hasOutputChannel: false
-        }, 'Should return default state for unknown command codes');
+            hasOutputChannel: false,
+            isLocked: false        }, 'Should return default state for unknown command codes');
     });
 
     test('should dispose properly and stop polling', () => {

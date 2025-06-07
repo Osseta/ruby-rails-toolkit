@@ -21,6 +21,7 @@ export type ProcessState = {
   debugActive: boolean;
   terminationReason: ProcessTerminationReason;
   hasOutputChannel: boolean;
+  isLocked: boolean;
 };
 
 export type Command = {

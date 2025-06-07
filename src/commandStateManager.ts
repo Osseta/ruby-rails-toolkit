@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { ProcessTracker } from './processTracker';
+import { FileLockManager } from './fileLockManager';
 import type { ProcessState } from './types';
 
 /**
@@ -29,6 +30,7 @@ export class CommandStateManager {
             const exists = ProcessTracker.isRunning(cmd.code);
             let terminationReason = ProcessTracker.getTerminationReason(cmd.code);
             const hasOutputChannel = ProcessTracker.hasOutputChannel(cmd.code);
+            const isLocked = FileLockManager.isLocked(cmd.code);
             
             // If termination reason is crashed but there's no output channel, change to none
             if (terminationReason === 'crashed' && !hasOutputChannel) {
@@ -39,7 +41,8 @@ export class CommandStateManager {
                 exists, 
                 debugActive: false,
                 terminationReason,
-                hasOutputChannel
+                hasOutputChannel,
+                isLocked
             });
         });
         this.updateTreeView();
@@ -54,7 +57,7 @@ export class CommandStateManager {
     }
 
     public getButtonState(code: string): ProcessState {
-        return this.buttonStates[code] || { exists: false, debugActive: false, terminationReason: 'none', hasOutputChannel: false };
+        return this.buttonStates[code] || { exists: false, debugActive: false, terminationReason: 'none', hasOutputChannel: false, isLocked: false };
     }
 
     private updateTreeView() {

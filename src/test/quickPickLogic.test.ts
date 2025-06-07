@@ -38,8 +38,8 @@ suite('QuickPick Logic Tests', () => {
                 exists: false,
                 debugActive: false,
                 terminationReason: 'none',
-                hasOutputChannel: false
-            };
+                hasOutputChannel: false,
+            isLocked: false            };
 
             const rubyItem = new AppCommandTreeItem(rubyCommand, state);
             const shellItem = new AppCommandTreeItem(shellCommand, state);
@@ -54,15 +54,15 @@ suite('QuickPick Logic Tests', () => {
                 exists: false,
                 debugActive: false,
                 terminationReason: 'crashed',
-                hasOutputChannel: true
-            };
+                hasOutputChannel: true,
+            isLocked: false            };
 
             const stateWithoutOutput: ProcessState = {
                 exists: false,
                 debugActive: false,
                 terminationReason: 'crashed',
-                hasOutputChannel: false
-            };
+                hasOutputChannel: false,
+            isLocked: false            };
 
             const itemWithOutput = new AppCommandTreeItem(rubyCommand, stateWithOutput);
             const itemWithoutOutput = new AppCommandTreeItem(rubyCommand, stateWithoutOutput);
@@ -78,15 +78,15 @@ suite('QuickPick Logic Tests', () => {
                 exists: true,
                 debugActive: false,
                 terminationReason: 'none',
-                hasOutputChannel: true
-            };
+                hasOutputChannel: true,
+            isLocked: false            };
 
             const stateWithoutOutput: ProcessState = {
                 exists: true,
                 debugActive: false,
                 terminationReason: 'none',
-                hasOutputChannel: false
-            };
+                hasOutputChannel: false,
+            isLocked: false            };
 
             const itemWithOutput = new AppCommandTreeItem(rubyCommand, stateWithOutput);
             const itemWithoutOutput = new AppCommandTreeItem(rubyCommand, stateWithoutOutput);
@@ -102,15 +102,15 @@ suite('QuickPick Logic Tests', () => {
                 exists: true,
                 debugActive: true,
                 terminationReason: 'none',
-                hasOutputChannel: true
-            };
+                hasOutputChannel: true,
+            isLocked: false            };
 
             const stateWithoutOutput: ProcessState = {
                 exists: true,
                 debugActive: true,
                 terminationReason: 'none',
-                hasOutputChannel: false
-            };
+                hasOutputChannel: false,
+            isLocked: false            };
 
             const itemWithOutput = new AppCommandTreeItem(rubyCommand, stateWithOutput);
             const itemWithoutOutput = new AppCommandTreeItem(rubyCommand, stateWithoutOutput);
@@ -148,8 +148,8 @@ suite('QuickPick Logic Tests', () => {
             exists: false,
             debugActive: false,
             terminationReason: 'crashed',
-            hasOutputChannel: true
-        };
+            hasOutputChannel: true,
+            isLocked: false        };
 
         const crashedItem = new AppCommandTreeItem(rubyCommand, crashedState);
 

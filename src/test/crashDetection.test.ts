@@ -101,6 +101,51 @@ suite('Process Crash Detection', () => {
             return [];
         }) as any);
 
+        // Mock additional filesystem operations needed by FileLockManager
+        let nextFileDescriptor = 1000;
+        const openFileDescriptors = new Map<number, string>();
+        
+        sandbox.stub(fs, 'openSync').callsFake((path: any, flags: any) => {
+            const pathStr = String(path);
+            if (flags === 'wx') {
+                // Exclusive write - fail if file exists
+                if (mockFiles.has(pathStr)) {
+                    const error = new Error(`EEXIST: file already exists, open '${path}'`);
+                    (error as any).code = 'EEXIST';
+                    throw error;
+                }
+                // Create file and return file descriptor
+                mockFiles.set(pathStr, '');
+                const fd = nextFileDescriptor++;
+                openFileDescriptors.set(fd, pathStr);
+                return fd;
+            } else {
+                // Regular open - fail if file doesn't exist
+                if (!mockFiles.has(pathStr)) {
+                    const error = new Error(`ENOENT: no such file or directory, open '${path}'`);
+                    (error as any).code = 'ENOENT';
+                    throw error;
+                }
+                const fd = nextFileDescriptor++;
+                openFileDescriptors.set(fd, pathStr);
+                return fd;
+            }
+        });
+        
+        sandbox.stub(fs, 'writeSync').callsFake((fd: number, data: any) => {
+            const pathStr = openFileDescriptors.get(fd);
+            if (pathStr) {
+                mockFiles.set(pathStr, String(data));
+                return String(data).length;
+            }
+            throw new Error('Invalid file descriptor');
+        });
+        
+        sandbox.stub(fs, 'closeSync').callsFake((fd: number) => {
+            openFileDescriptors.delete(fd);
+            return undefined;
+        });
+
         // Mock process.kill to prevent actual process operations
         // For signal 0 (existence check), return true for our mock PIDs
         sandbox.stub(process, 'kill').callsFake((pid: any, signal?: any) => {
@@ -141,6 +186,8 @@ suite('Process Crash Detection', () => {
         mockDirectories.clear();
         // Clean up any test files
         ProcessTracker.clearAllTerminationReasons();
+        // Clear output channels map to prevent test interference
+        (ProcessTracker as any).outputChannels.clear();
     });
 
     test('should show output channel and error message when process crashes', async () => {

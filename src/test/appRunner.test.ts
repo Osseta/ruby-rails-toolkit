@@ -30,8 +30,8 @@ suite('AppRunner', () => {
                 exists: false,
                 debugActive: false,
                 terminationReason: 'none',
-                hasOutputChannel: false
-            };
+                hasOutputChannel: false,
+            isLocked: false            };
 
             const item = new AppCommandTreeItem(testCommand, state);
             assert.strictEqual(item.contextValue, 'canRun');
@@ -42,8 +42,8 @@ suite('AppRunner', () => {
                 exists: false,
                 debugActive: false,
                 terminationReason: 'crashed',
-                hasOutputChannel: true
-            };
+                hasOutputChannel: true,
+            isLocked: false            };
 
             const item = new AppCommandTreeItem(testCommand, state);
             assert.strictEqual(item.contextValue, 'canShowOutputCrashed,canShowOutput');
@@ -54,8 +54,8 @@ suite('AppRunner', () => {
                 exists: true,
                 debugActive: false,
                 terminationReason: 'none',
-                hasOutputChannel: true
-            };
+                hasOutputChannel: true,
+            isLocked: false            };
 
             const item = new AppCommandTreeItem(testCommand, state);
             assert.strictEqual(item.contextValue, 'canShowOutputRunning,canStop,canShowOutput');
@@ -70,8 +70,8 @@ suite('AppRunner', () => {
                 exists: true,
                 debugActive: false,
                 terminationReason: 'none',
-                hasOutputChannel: true
-            };
+                hasOutputChannel: true,
+            isLocked: false            };
 
             const item = new AppCommandTreeItem(rubyCommand, state);
             assert.strictEqual(item.contextValue, 'canShowOutputRunning,canStop,canDebug,canShowOutput');
@@ -82,8 +82,8 @@ suite('AppRunner', () => {
                 exists: false,
                 debugActive: false,
                 terminationReason: 'crashed',
-                hasOutputChannel: false
-            };
+                hasOutputChannel: false,
+            isLocked: false            };
 
             const item = new AppCommandTreeItem(testCommand, state);
             assert.strictEqual(item.contextValue, '');
@@ -98,8 +98,8 @@ suite('AppRunner', () => {
                 exists: true,
                 debugActive: true,
                 terminationReason: 'none',
-                hasOutputChannel: true
-            };
+                hasOutputChannel: true,
+            isLocked: false            };
 
             const item = new AppCommandTreeItem(rubyCommand, state);
             assert.strictEqual(item.contextValue, 'canShowOutputRunning,canStop,canShowOutput');

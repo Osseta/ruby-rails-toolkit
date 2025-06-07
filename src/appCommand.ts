@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Command, AppConfig } from './types';
 import { ProcessTracker } from './processTracker';
+import { FileLockManager } from './fileLockManager';
 import * as vscode from 'vscode';
 import { listRdbgSocks } from './utils';
 
@@ -87,28 +88,30 @@ export function saveAppConfig(config: AppConfig): void {
  * @param command The command to run
  */
 export async function runCommand(command: Command) {
-    let commandToRun = command.command;
+    return await FileLockManager.withLock(command.code, async () => {
+        let commandToRun = command.command;
 
-    if (command.commandType === 'ruby') {
-        // Prepend rdbg to the command for debugging
-        const waitFlag = command.wait === false ? '-n' : '';
-        commandToRun = `bundle exec rdbg --open --session-name=${command.code} ${waitFlag} --command -- env -u HEADLESS ${command.command}`;
-    }
-    const childProcess = ProcessTracker.spawnAndTrack({
-        code: command.code,
-        command: commandToRun,
-        args: [],
-        options: { stdio: 'ignore' }
-    });
-
-    // Show output channel if setting is enabled
-    const showOutput = vscode.workspace.getConfiguration('runRspec').get('automaticallyShowOutputForCommand');
-    if (showOutput) {
-        const outputChannel = ProcessTracker.getOutputChannel(command.code);
-        if (outputChannel) {
-            outputChannel.show(true);
+        if (command.commandType === 'ruby') {
+            // Prepend rdbg to the command for debugging
+            const waitFlag = command.wait === false ? '-n' : '';
+            commandToRun = `bundle exec rdbg --open --session-name=${command.code} ${waitFlag} --command -- env -u HEADLESS ${command.command}`;
         }
-    }
+        const childProcess = ProcessTracker.spawnAndTrack({
+            code: command.code,
+            command: commandToRun,
+            args: [],
+            options: { stdio: 'ignore' }
+        });
+
+        // Show output channel if setting is enabled
+        const showOutput = vscode.workspace.getConfiguration('runRspec').get('automaticallyShowOutputForCommand');
+        if (showOutput) {
+            const outputChannel = ProcessTracker.getOutputChannel(command.code);
+            if (outputChannel) {
+                outputChannel.show(true);
+            }
+        }
+    });
 }
 
 /**
@@ -116,7 +119,9 @@ export async function runCommand(command: Command) {
  * @param command The command to stop
  */
 export async function stopCommand(command: Command) {
-    ProcessTracker.stopProcess(command.code);
+    return await FileLockManager.withLock(command.code, async () => {
+        ProcessTracker.stopProcess(command.code);
+    });
 }
 
 /**
@@ -127,12 +132,16 @@ export async function stopCommand(command: Command) {
  */
 export async function stopAllCommands(config?: AppConfig): Promise<void> {
     const appConfig = config || loadAppConfig();
-    for (const cmd of appConfig.commands) {
+    
+    // Stop all commands in parallel, each with its own lock
+    const stopPromises = appConfig.commands.map(async (cmd) => {
         const isRunning = ProcessTracker.isRunning(cmd.code);
         if (isRunning) {
             await stopCommand(cmd);
         }
-    }
+    });
+    
+    await Promise.all(stopPromises);
 }
 
 /**
@@ -140,30 +149,32 @@ export async function stopAllCommands(config?: AppConfig): Promise<void> {
  * @param command The command to debug
  */
 export async function debugCommand(command: Command) {
-    if (command.commandType !== 'ruby') {
-        // For shell commands, debugging is not supported
-        return;
-    }
-    // Find the running process PID
-    const pid = ProcessTracker.getRunningPid(command.code);
-    if (!pid) {
-        throw new Error(`No running process found for command: ${command.code}`);
-    }
+    return await FileLockManager.withLock(command.code, async () => {
+        if (command.commandType !== 'ruby') {
+            // For shell commands, debugging is not supported
+            return;
+        }
+        // Find the running process PID
+        const pid = ProcessTracker.getRunningPid(command.code);
+        if (!pid) {
+            throw new Error(`No running process found for command: ${command.code}`);
+        }
 
-    // Attempt to find the rdbg socket for this PID using listRdbgSocks
-    const socksResult = await listRdbgSocks();
-    const lines = socksResult.stdout.split('\n').filter(Boolean);
-    const socketFile = lines.find((line: string) => line.includes(`rdbg-${pid}-`));
-    if (!socketFile) {
-        throw new Error(`No rdbg socket found for PID: ${pid}\nAvailable sockets:\n${socksResult.stdout}`);
-    }
-    // Start a VS Code debug session attached to this socket
-    await vscode.debug.startDebugging(undefined, {
-        type: 'rdbg',
-        name: `Attach to rdbg (${command.code})`,
-        request: 'attach',
-        debugPort: socketFile,
-        autoAttach: true,
-        cwd: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || process.cwd(),
+        // Attempt to find the rdbg socket for this PID using listRdbgSocks
+        const socksResult = await listRdbgSocks();
+        const lines = socksResult.stdout.split('\n').filter(Boolean);
+        const socketFile = lines.find((line: string) => line.includes(`rdbg-${pid}-`));
+        if (!socketFile) {
+            throw new Error(`No rdbg socket found for PID: ${pid}\nAvailable sockets:\n${socksResult.stdout}`);
+        }
+        // Start a VS Code debug session attached to this socket
+        await vscode.debug.startDebugging(undefined, {
+            type: 'rdbg',
+            name: `Attach to rdbg (${command.code})`,
+            request: 'attach',
+            debugPort: socketFile,
+            autoAttach: true,
+            cwd: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || process.cwd(),
+        });
     });
 }

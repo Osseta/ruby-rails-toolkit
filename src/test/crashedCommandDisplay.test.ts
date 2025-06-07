@@ -28,7 +28,8 @@ suite('Crashed Command Display Tests', () => {
             exists: false,
             debugActive: false,
             terminationReason: 'crashed',
-            hasOutputChannel: true
+            hasOutputChannel: true,
+            isLocked: false
         };
 
         const treeItem = new AppCommandTreeItem(testCommand, crashedState);
@@ -54,7 +55,8 @@ suite('Crashed Command Display Tests', () => {
             exists: false,
             debugActive: false,
             terminationReason: 'none',
-            hasOutputChannel: false
+            hasOutputChannel: false,
+            isLocked: false
         };
 
         const treeItem = new AppCommandTreeItem(testCommand, normalState);
@@ -83,7 +85,8 @@ suite('Crashed Command Display Tests', () => {
             exists: false,
             debugActive: false,
             terminationReason: 'crashed',
-            hasOutputChannel: true
+            hasOutputChannel: true,
+            isLocked: false
         };
 
         const treeItem = new AppCommandTreeItem(testCommand, crashedState);
@@ -106,7 +109,8 @@ suite('Crashed Command Display Tests', () => {
             exists: true,
             debugActive: false,
             terminationReason: 'none',
-            hasOutputChannel: true
+            hasOutputChannel: true,
+            isLocked: false
         };
 
         const treeItem = new AppCommandTreeItem(testCommand, runningState);
@@ -128,7 +132,8 @@ suite('Crashed Command Display Tests', () => {
             exists: false,
             debugActive: false,
             terminationReason: 'none',
-            hasOutputChannel: false
+            hasOutputChannel: false,
+            isLocked: false
         };
 
         const treeItem = new AppCommandTreeItem(testCommand, stoppedState);

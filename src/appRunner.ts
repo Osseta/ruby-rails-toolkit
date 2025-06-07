@@ -14,7 +14,7 @@ export class AppCommandTreeItem extends vscode.TreeItem {
 
     constructor(cmd: Command, state?: ProcessState) {
         // Provide default state if not supplied
-        const safeState = state || { exists: false, debugActive: false, terminationReason: 'none', hasOutputChannel: false };
+        const safeState = state || { exists: false, debugActive: false, terminationReason: 'none', hasOutputChannel: false, isLocked: false };
         // Set label from command description
         super(cmd.description, vscode.TreeItemCollapsibleState.None);
         this.cmd = cmd;
@@ -29,8 +29,10 @@ export class AppCommandTreeItem extends vscode.TreeItem {
             this.resourceUri = vscode.Uri.parse(`crashed-command:${cmd.code}`);
         }
         
-        // Set icon based on running state and termination reason
-        if (safeState.exists) {
+        // Set icon based on locked state first, then running state and termination reason
+        if (safeState.isLocked) {
+            this.iconPath = new (vscode as any).ThemeIcon('loading~spin');
+        } else if (safeState.exists) {
             this.iconPath = new (vscode as any).ThemeIcon('circle-large-filled', new vscode.ThemeColor('appRunner.runningCommand.foreground'));
         } else if (safeState.terminationReason === 'crashed') {
             this.iconPath = new (vscode as any).ThemeIcon('testing-error-icon', new vscode.ThemeColor('errorForeground'));
