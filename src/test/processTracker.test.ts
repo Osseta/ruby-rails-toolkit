@@ -419,6 +419,175 @@ suite('ProcessTracker', () => {
             assert.strictEqual(outputChannelMock.show.callCount, 1);
             assert.strictEqual(outputChannelMock.show.getCall(0).args[0], true);
         });
+
+        test('should not process lines that already contain file://', () => {
+            const testCases = [
+                { 
+                    input: 'Error in file:///path/to/app/models/user.rb:45', 
+                    expected: 'Error in file:///path/to/app/models/user.rb:45',
+                    description: 'line with file:// should remain unchanged'
+                },
+                { 
+                    input: 'Check file://src/components/header.tsx:10 for issues', 
+                    expected: 'Check file://src/components/header.tsx:10 for issues',
+                    description: 'line with file:// prefix should remain unchanged'
+                },
+                { 
+                    input: 'Multiple issues: file:///app/models/user.rb:30 and app/models/post.rb:20', 
+                    expected: 'Multiple issues: file:///app/models/user.rb:30 and app/models/post.rb:20',
+                    description: 'entire line with file:// anywhere should remain unchanged'
+                },
+                { 
+                    input: 'file://already/processed.rb:123', 
+                    expected: 'file://already/processed.rb:123',
+                    description: 'complete line with file:// should remain unchanged'
+                }
+            ];
+
+            testCases.forEach(({ input, expected, description }) => {
+                const result = ProcessTracker.preprocessOutputData(input);
+                assert.strictEqual(result, expected, `Failed: ${description} - input: ${input}`);
+            });
+        });
+
+        test('should not process lines that contain [StatsD]', () => {
+            const testCases = [
+                { 
+                    input: '[StatsD] app/models/user.rb:45 method call', 
+                    expected: '[StatsD] app/models/user.rb:45 method call',
+                    description: 'StatsD log line should remain unchanged'
+                },
+                { 
+                    input: 'Processing [StatsD] metrics for lib/helper.rb:20', 
+                    expected: 'Processing [StatsD] metrics for lib/helper.rb:20',
+                    description: 'line containing [StatsD] should remain unchanged'
+                },
+                { 
+                    input: '[StatsD] Error in /absolute/path/file.rb:100', 
+                    expected: '[StatsD] Error in /absolute/path/file.rb:100',
+                    description: 'StatsD line with absolute path should remain unchanged'
+                },
+                { 
+                    input: 'Debug: [StatsD] timing for src/components/button.tsx:30', 
+                    expected: 'Debug: [StatsD] timing for src/components/button.tsx:30',
+                    description: 'line with [StatsD] anywhere should remain unchanged'
+                }
+            ];
+
+            testCases.forEach(({ input, expected, description }) => {
+                const result = ProcessTracker.preprocessOutputData(input);
+                assert.strictEqual(result, expected, `Failed: ${description} - input: ${input}`);
+            });
+        });
+
+        test('should not process lines that contain Rendered', () => {
+            const testCases = [
+                { 
+                    input: 'Rendered app/views/users/show.html.erb:15', 
+                    expected: 'Rendered app/views/users/show.html.erb:15',
+                    description: 'Rails rendered view line should remain unchanged'
+                },
+                { 
+                    input: 'Template Rendered in app/views/layouts/application.html.erb:20', 
+                    expected: 'Template Rendered in app/views/layouts/application.html.erb:20',
+                    description: 'line containing Rendered should remain unchanged'
+                },
+                { 
+                    input: 'Rendered partial: app/views/shared/_header.html.erb:5', 
+                    expected: 'Rendered partial: app/views/shared/_header.html.erb:5',
+                    description: 'rendered partial line should remain unchanged'
+                },
+                { 
+                    input: 'Successfully Rendered views/posts/index.html.erb:45 in 123ms', 
+                    expected: 'Successfully Rendered views/posts/index.html.erb:45 in 123ms',
+                    description: 'line with Rendered anywhere should remain unchanged'
+                },
+                { 
+                    input: 'Rendered /absolute/path/views/error.html.erb:10', 
+                    expected: 'Rendered /absolute/path/views/error.html.erb:10',
+                    description: 'rendered line with absolute path should remain unchanged'
+                }
+            ];
+
+            testCases.forEach(({ input, expected, description }) => {
+                const result = ProcessTracker.preprocessOutputData(input);
+                assert.strictEqual(result, expected, `Failed: ${description} - input: ${input}`);
+            });
+        });
+
+        test('should process normal lines that do not contain filtering keywords', () => {
+            const testCases = [
+                { 
+                    input: 'Error in app/models/user.rb:45', 
+                    expected: 'Error in file:///mock/workspace/app/models/user.rb:45',
+                    description: 'normal error line should be processed'
+                },
+                { 
+                    input: 'Warning in lib/helper.rb:20', 
+                    expected: 'Warning in file:///mock/workspace/lib/helper.rb:20',
+                    description: 'normal warning line should be processed'
+                },
+                { 
+                    input: 'Processing src/components/button.tsx:30', 
+                    expected: 'Processing file:///mock/workspace/src/components/button.tsx:30',
+                    description: 'normal processing line should be processed'
+                },
+                { 
+                    input: 'Loading config/database.yml:15', 
+                    expected: 'Loading file:///mock/workspace/config/database.yml:15',
+                    description: 'normal loading line should be processed'
+                }
+            ];
+
+            testCases.forEach(({ input, expected, description }) => {
+                const result = ProcessTracker.preprocessOutputData(input);
+                assert.strictEqual(result, expected, `Failed: ${description} - input: ${input}`);
+            });
+        });
+
+        test('should handle mixed lines with and without filtering keywords', () => {
+            const input = `Error in app/models/user.rb:45
+[StatsD] app/models/post.rb:20 timing
+Rendered app/views/users/show.html.erb:15
+Warning in lib/helper.rb:30
+file://already/processed.rb:123
+Processing src/component.tsx:50`;
+
+            const expected = `Error in file:///mock/workspace/app/models/user.rb:45
+[StatsD] app/models/post.rb:20 timing
+Rendered app/views/users/show.html.erb:15
+Warning in file:///mock/workspace/lib/helper.rb:30
+file://already/processed.rb:123
+Processing file:///mock/workspace/src/component.tsx:50`;
+
+            const result = ProcessTracker.preprocessOutputData(input);
+            assert.strictEqual(result, expected, 'Should process only lines without filtering keywords');
+        });
+
+        test('should handle edge cases with filtering keywords as part of larger words', () => {
+            const testCases = [
+                { 
+                    input: 'fileRendered app/models/user.rb:45', 
+                    expected: 'fileRendered app/models/user.rb:45',
+                    description: 'should NOT process when Rendered is part of another word (line.includes behavior)'
+                },
+                { 
+                    input: 'custom[StatsD]Logger app/helper.rb:20', 
+                    expected: 'custom[StatsD]Logger app/helper.rb:20',
+                    description: 'should NOT process when [StatsD] is part of another word (line.includes behavior)'
+                },
+                { 
+                    input: 'notfile://path but app/models/user.rb:30', 
+                    expected: 'notfile://path but app/models/user.rb:30',
+                    description: 'should NOT process when file:// is part of another word (line.includes behavior)'
+                }
+            ];
+
+            testCases.forEach(({ input, expected, description }) => {
+                const result = ProcessTracker.preprocessOutputData(input);
+                assert.strictEqual(result, expected, `Failed: ${description} - input: ${input}`);
+            });
+        });
     });
 
     suite('Clear Output Channel Configuration', () => {

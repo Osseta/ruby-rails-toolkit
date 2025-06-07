@@ -447,7 +447,9 @@ export class ProcessTracker {
             let processedLine = line;
             
             // Only process if the line doesn't already contain 'file://'
-            if (!line.includes('file://')) {
+            // is not a StatsD log line, and does not contain 'Rendered' to avoid matching
+            // rails view rendering log which don't include full file information.
+            if (!line.includes('file://') && !line.includes('[StatsD]') && !line.includes('Rendered')) {
                 processedLine = line.replace(filePathPattern, (match, path) => {
                     // Check if the path is a valid file (has extension) and is either:
                     // 1. Has a path separator (directory/file.ext)
