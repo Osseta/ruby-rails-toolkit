@@ -2,12 +2,15 @@ import * as assert from 'assert';
 import * as sinon from 'sinon';
 import * as rdbgSockets from '../rdbgSockets';
 import { RdbgSocketPath } from '../types';
+import * as utils from '../utils';
 
 let unlinkStub: sinon.SinonStub;
 
 suite('rdbgSockets', () => {
   setup(() => {
     sinon.restore();
+    // Mock workspaceHash to return a predictable value
+    sinon.stub(utils, 'workspaceHash').returns('mock-hash-1234');
     unlinkStub = sinon.stub();
     sinon.replace(require('fs'), 'unlink', unlinkStub);
     sinon.stub(require('../utils'), 'unlinkSocket');

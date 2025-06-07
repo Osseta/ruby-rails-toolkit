@@ -3,6 +3,7 @@ import { runCommand, stopCommand, debugCommand, loadAppConfig, stopAllCommands }
 import { ProcessTracker } from './processTracker';
 import { CommandStateManager } from './commandStateManager';
 import type { Commands, Command, ProcessState } from './types';
+import { workspaceHash } from './utils';
 
 /**
  * Represents a single command in the App Runner TreeView, with state-based icon, label, tooltip, and context value.
@@ -14,12 +15,16 @@ export class AppCommandTreeItem extends vscode.TreeItem {
 
     constructor(cmd: Command, state?: ProcessState) {
         // Provide default state if not supplied
-        const safeState = state || { exists: false, debugActive: false, terminationReason: 'none', hasOutputChannel: false, isLocked: false };
+        const safeState = state || { exists: false, debugActive: false, terminationReason: 'none', hasOutputChannel: false, isLocked: false, workspaceHash: undefined };
         // Set label from command description
         super(cmd.description, vscode.TreeItemCollapsibleState.None);
         this.cmd = cmd;
         this.code = cmd.code;
         this.running = safeState.exists;
+        
+        // Check if process is from different workspace
+        const currentWorkspace = workspaceHash();
+        const isDifferentWorkspace = safeState.exists && safeState.workspaceHash && safeState.workspaceHash !== currentWorkspace;
         
         // Add red styling for crashed commands
         if (safeState.terminationReason === 'crashed') {
@@ -27,13 +32,21 @@ export class AppCommandTreeItem extends vscode.TreeItem {
             this.description = '(CRASHED)';
             // Set resource URI for potential future styling
             this.resourceUri = vscode.Uri.parse(`crashed-command:${cmd.code}`);
+        } else if (isDifferentWorkspace) {
+            this.description = '(DIFFERENT WORKSPACE)';
         }
         
         // Set icon based on locked state first, then running state and termination reason
         if (safeState.isLocked) {
             this.iconPath = new (vscode as any).ThemeIcon('loading~spin');
         } else if (safeState.exists) {
-            this.iconPath = new (vscode as any).ThemeIcon('circle-large-filled', new vscode.ThemeColor('appRunner.runningCommand.foreground'));
+            if (isDifferentWorkspace) {
+                // Orange icon for processes from different workspace
+                this.iconPath = new (vscode as any).ThemeIcon('circle-large-filled', new vscode.ThemeColor('appRunner.differentWorkspace.foreground'));
+            } else {
+                // Green icon for processes from current workspace
+                this.iconPath = new (vscode as any).ThemeIcon('circle-large-filled', new vscode.ThemeColor('appRunner.runningCommand.foreground'));
+            }
         } else if (safeState.terminationReason === 'crashed') {
             this.iconPath = new (vscode as any).ThemeIcon('testing-error-icon', new vscode.ThemeColor('errorForeground'));
         } else {
@@ -64,7 +77,8 @@ export class AppCommandTreeItem extends vscode.TreeItem {
             capabilities.push('canStop');
             
             // Add debug capability for ruby commands when running but not already debugging
-            if (cmd.commandType === 'ruby' && !safeState.debugActive) {
+            // Disable debug for processes from different workspaces
+            if (cmd.commandType === 'ruby' && !safeState.debugActive && !isDifferentWorkspace) {
                 capabilities.push('canDebug');
             }
         }
@@ -76,7 +90,11 @@ export class AppCommandTreeItem extends vscode.TreeItem {
         
         this.contextValue = capabilities.join(',');
         // Set tooltip
-        this.tooltip = `${cmd.description}\n${cmd.command}`;
+        let tooltipText = `${cmd.description}\n${cmd.command}`;
+        if (isDifferentWorkspace) {
+            tooltipText += '\n⚠️ Running in different workspace';
+        }
+        this.tooltip = tooltipText;
         // No command property set, so clicking does nothing (allows for selection/focus)
     }
 }
@@ -225,8 +243,13 @@ export function registerAppRunnerTreeView(context: vscode.ExtensionContext) {
             exists: false, 
             debugActive: false, 
             terminationReason: 'none', 
-            hasOutputChannel: false 
+            hasOutputChannel: false,
+            workspaceHash: undefined
         };
+        
+        // Check if process is from different workspace
+        const currentWorkspace = workspaceHash();
+        const isDifferentWorkspace = state.exists && state.workspaceHash && state.workspaceHash !== currentWorkspace;
         
         // Use the exact same logic as the TreeItem contextValue to determine available actions
         if (!state.exists) {
@@ -245,7 +268,8 @@ export function registerAppRunnerTreeView(context: vscode.ExtensionContext) {
             });
             
             // Only include Debug for Ruby commands, not shell commands
-            if (cmd.commandType === 'ruby') {
+            // Disable debug for processes from different workspaces
+            if (cmd.commandType === 'ruby' && !isDifferentWorkspace) {
                 actions.push({
                     label: "$(debug) Debug",
                     description: "Attach debugger to running command", 

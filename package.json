@@ -196,6 +196,15 @@
           "light": "#388e3c",
           "highContrast": "#4caf50"
         }
+      },
+      {
+        "id": "appRunner.differentWorkspace.foreground",
+        "description": "Foreground color for commands running in different workspace",
+        "defaults": {
+          "dark": "#ff9800",
+          "light": "#f57c00",
+          "highContrast": "#ffab40"
+        }
       }
     ]
   },

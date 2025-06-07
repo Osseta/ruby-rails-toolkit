@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { ProcessTracker } from './processTracker';
 import { FileLockManager } from './fileLockManager';
 import type { ProcessState } from './types';
+import { workspaceHash } from './utils';
 
 /**
  * Manages the enabled/disabled state of command buttons in the AppRunner TreeView.
@@ -26,11 +27,14 @@ export class CommandStateManager {
     }
 
     private async pollSessionStates() {
+        const currentWorkspace = workspaceHash();
+        
         this.commands.forEach((cmd: any) => {
             const exists = ProcessTracker.isRunning(cmd.code);
             let terminationReason = ProcessTracker.getTerminationReason(cmd.code);
             const hasOutputChannel = ProcessTracker.hasOutputChannel(cmd.code);
             const isLocked = FileLockManager.isLocked(cmd.code);
+            const processWorkspaceHash = ProcessTracker.getWorkspaceHash(cmd.code);
             
             // If termination reason is crashed but there's no output channel, change to none
             if (terminationReason === 'crashed' && !hasOutputChannel) {
@@ -42,7 +46,8 @@ export class CommandStateManager {
                 debugActive: false,
                 terminationReason,
                 hasOutputChannel,
-                isLocked
+                isLocked,
+                workspaceHash: processWorkspaceHash
             });
         });
         this.updateTreeView();
@@ -57,7 +62,7 @@ export class CommandStateManager {
     }
 
     public getButtonState(code: string): ProcessState {
-        return this.buttonStates[code] || { exists: false, debugActive: false, terminationReason: 'none', hasOutputChannel: false, isLocked: false };
+        return this.buttonStates[code] || { exists: false, debugActive: false, terminationReason: 'none', hasOutputChannel: false, isLocked: false, workspaceHash: undefined };
     }
 
     private updateTreeView() {

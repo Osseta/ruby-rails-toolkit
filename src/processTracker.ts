@@ -4,11 +4,12 @@ import * as os from 'os';
 import { spawn, ChildProcessWithoutNullStreams } from 'child_process';
 import * as vscode from 'vscode';
 import type { ProcessTerminationReason } from './types';
+import { workspaceHash } from './utils';
 
 /**
  * Manages process tracking using PID files in a user-specific directory.
  * Used for both Ruby (with or without rdbg) and shell commands.
- * Also tracks process termination reasons to determine proper icon display.
+ * Also tracks process termination reasons and workspace hash to determine proper icon display.
  */
 export class ProcessTracker {
     private static readonly PID_DIR = 'pids';
@@ -79,19 +80,23 @@ export class ProcessTracker {
     static setTerminationReason(code: string, reason: ProcessTerminationReason): void {
         this.ensureStateDir();
         const stateFile = this.getStateFilePath(code);
-        fs.writeFileSync(stateFile, reason, 'utf8');
+        
+        // Read existing state to preserve workspace hash
+        const existingState = this.readState(code);
+        const state = {
+            terminationReason: reason,
+            workspaceHash: existingState.workspaceHash
+        };
+        
+        fs.writeFileSync(stateFile, JSON.stringify(state), 'utf8');
     }
 
     /**
      * Gets the termination reason for a process.
      */
     static getTerminationReason(code: string): ProcessTerminationReason {
-        const stateFile = this.getStateFilePath(code);
-        if (!fs.existsSync(stateFile)) {
-            return 'none';
-        }
-        const content = fs.readFileSync(stateFile, 'utf8').trim();
-        return content as ProcessTerminationReason || 'none';
+        const state = this.readState(code);
+        return state.terminationReason || 'none';
     }
 
     /**
@@ -101,6 +106,79 @@ export class ProcessTracker {
         const stateFile = this.getStateFilePath(code);
         if (fs.existsSync(stateFile)) {
             fs.unlinkSync(stateFile);
+        }
+    }
+
+    /**
+     * Sets the workspace hash for a process.
+     */
+    static setWorkspaceHash(code: string, hash: string): void {
+        this.ensureStateDir();
+        const stateFile = this.getStateFilePath(code);
+        
+        // Read existing state to preserve termination reason
+        const existingState = this.readState(code);
+        const state = {
+            terminationReason: existingState.terminationReason || 'none',
+            workspaceHash: hash
+        };
+        
+        fs.writeFileSync(stateFile, JSON.stringify(state), 'utf8');
+    }
+
+    /**
+     * Gets the workspace hash for a process.
+     */
+    static getWorkspaceHash(code: string): string | undefined {
+        const state = this.readState(code);
+        return state.workspaceHash;
+    }
+
+    /**
+     * Clears the workspace hash for a process.
+     */
+    static clearWorkspaceHash(code: string): void {
+        this.ensureStateDir();
+        const stateFile = this.getStateFilePath(code);
+        
+        if (fs.existsSync(stateFile)) {
+            // Read existing state to preserve termination reason
+            const existingState = this.readState(code);
+            
+            if (existingState.terminationReason) {
+                // Preserve termination reason, only remove workspace hash
+                const state = {
+                    terminationReason: existingState.terminationReason
+                    // workspaceHash is intentionally omitted
+                };
+                fs.writeFileSync(stateFile, JSON.stringify(state), 'utf8');
+            } else {
+                // No termination reason to preserve, delete the file
+                fs.unlinkSync(stateFile);
+            }
+        }
+    }
+
+    /**
+     * Reads the state file for a process.
+     */
+    private static readState(code: string): { terminationReason?: ProcessTerminationReason, workspaceHash?: string } {
+        const stateFile = this.getStateFilePath(code);
+        if (!fs.existsSync(stateFile)) {
+            return {};
+        }
+        
+        try {
+            const content = fs.readFileSync(stateFile, 'utf8').trim();
+            // Handle both old format (string) and new format (JSON)
+            if (content.startsWith('{')) {
+                return JSON.parse(content);
+            } else {
+                // Old format - just termination reason as string
+                return { terminationReason: content as ProcessTerminationReason };
+            }
+        } catch {
+            return {};
         }
     }
 
@@ -119,6 +197,10 @@ export class ProcessTracker {
         this.ensurePidDir();
         // Clear any previous termination reason when starting a new process
         this.clearTerminationReason(code);
+        
+        // Store the current workspace hash for this process
+        const currentWorkspaceHash = workspaceHash();
+        this.setWorkspaceHash(code, currentWorkspaceHash);
         
         // Create or reuse output channel
         let outputChannel = this.outputChannels.get(code);
@@ -156,7 +238,7 @@ export class ProcessTracker {
                 fs.unlinkSync(pidFile);
             }
             
-            // Determine termination reason - if no explicit user termination was set, it's a crash
+            // Determine termination reason BEFORE clearing workspace hash
             const currentReason = this.getTerminationReason(code);
             if (currentReason === 'none') {
                 // Process exited without user intervention, mark as crashed
@@ -176,6 +258,9 @@ export class ProcessTracker {
                     });
                 }
             }
+            
+            // Clean up workspace hash after handling termination reason
+            this.clearWorkspaceHash(code);
             
             outputChannel.appendLine(`\n[Process exited with code ${exitCode}${signal ? `, signal ${signal}` : ''}]`);
         });
@@ -236,6 +321,9 @@ export class ProcessTracker {
             process.kill(pid, 'SIGTERM');
         } catch {}
         fs.unlinkSync(pidFile);
+        
+        // Clean up workspace hash
+        this.clearWorkspaceHash(code);
     }
 
     /**
@@ -293,6 +381,14 @@ export class ProcessTracker {
         } catch (error) {
             // Directory might not exist or be empty, which is fine
         }
+    }
+
+    /**
+     * Clears all workspace hashes. Used during cleanup.
+     */
+    static clearAllWorkspaceHashes(): void {
+        // This method is now a no-op since workspace hashes are stored in state files
+        // and cleared automatically when clearAllTerminationReasons() is called
     }
 
     /**

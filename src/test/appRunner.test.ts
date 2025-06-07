@@ -1,15 +1,35 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 import * as sinon from 'sinon';
+import * as fs from 'fs';
+import * as childProcess from 'child_process';
+import { EventEmitter } from 'events';
 import { ProcessTracker } from '../processTracker';
 import { AppCommandTreeItem } from '../appRunner';
 import type { Command, ProcessState } from '../types';
+import * as utils from '../utils';
 
 suite('AppRunner', () => {
     let sandbox: sinon.SinonSandbox;
 
     setup(() => {
         sandbox = sinon.createSandbox();
+        // Mock workspaceHash to return a predictable value
+        sandbox.stub(utils, 'workspaceHash').returns('mock-hash-1234');
+        
+        // Ensure vscode.Uri exists and mock parse
+        if (!vscode.Uri) {
+            (vscode as any).Uri = {};
+        }
+        if (!vscode.Uri.parse) {
+            (vscode.Uri.parse as any) = () => ({});
+        }
+        sandbox.stub(vscode.Uri, 'parse').callsFake((value: string) => ({
+            scheme: 'crashed-command',
+            path: value,
+            fsPath: value,
+            toString: () => value
+        } as any));
     });
 
     teardown(() => {
@@ -117,6 +137,31 @@ suite('AppRunner', () => {
             };
             sandbox.stub(vscode.window, 'createOutputChannel').returns(mockOutputChannel as any);
 
+            // Mock filesystem to simulate PID file creation
+            const mockFiles = new Map();
+            sandbox.stub(fs, 'existsSync').returns(true);
+            sandbox.stub(fs, 'writeFileSync').callsFake((path: any, data: any) => {
+                mockFiles.set(String(path), String(data));
+            });
+            sandbox.stub(fs, 'readFileSync').callsFake((path: any) => {
+                return mockFiles.get(String(path)) || '12345';
+            });
+            sandbox.stub(fs, 'unlinkSync').callsFake((path: any) => {
+                mockFiles.delete(String(path));
+            });
+            sandbox.stub(fs, 'mkdirSync').returns(undefined);
+
+            // Mock child_process.spawn to avoid actual process spawning
+            const mockChild = new EventEmitter() as any;
+            mockChild.pid = 12345;
+            mockChild.stdout = new EventEmitter();
+            mockChild.stderr = new EventEmitter();
+            mockChild.kill = sandbox.stub().returns(true);
+            sandbox.stub(childProcess, 'spawn').returns(mockChild);
+
+            // Mock process.kill to avoid killing actual processes
+            sandbox.stub(process, 'kill').returns(true as any);
+
             // Spawn a process to create the output channel
             ProcessTracker.spawnAndTrack({
                 code: 'TEST_HAS_OUTPUT',
@@ -143,6 +188,31 @@ suite('AppRunner', () => {
                 dispose: sandbox.stub()
             };
             sandbox.stub(vscode.window, 'createOutputChannel').returns(mockOutputChannel as any);
+
+            // Mock filesystem to simulate PID file creation
+            const mockFiles = new Map();
+            sandbox.stub(fs, 'existsSync').returns(true);
+            sandbox.stub(fs, 'writeFileSync').callsFake((path: any, data: any) => {
+                mockFiles.set(String(path), String(data));
+            });
+            sandbox.stub(fs, 'readFileSync').callsFake((path: any) => {
+                return mockFiles.get(String(path)) || '12345';
+            });
+            sandbox.stub(fs, 'unlinkSync').callsFake((path: any) => {
+                mockFiles.delete(String(path));
+            });
+            sandbox.stub(fs, 'mkdirSync').returns(undefined);
+
+            // Mock child_process.spawn to avoid actual process spawning
+            const mockChild = new EventEmitter() as any;
+            mockChild.pid = 12345;
+            mockChild.stdout = new EventEmitter();
+            mockChild.stderr = new EventEmitter();
+            mockChild.kill = sandbox.stub().returns(true);
+            sandbox.stub(childProcess, 'spawn').returns(mockChild);
+
+            // Mock process.kill to avoid killing actual processes
+            sandbox.stub(process, 'kill').returns(true as any);
 
             // Spawn a process to create the output channel
             ProcessTracker.spawnAndTrack({

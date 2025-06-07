@@ -4,12 +4,29 @@ import * as sinon from 'sinon';
 import { AppCommandTreeItem } from '../appRunner';
 import { ProcessTracker } from '../processTracker';
 import type { Command, ProcessState } from '../types';
+import * as utils from '../utils';
 
 suite('QuickPick Logic Tests', () => {
     let sandbox: sinon.SinonSandbox;
 
     setup(() => {
         sandbox = sinon.createSandbox();
+        // Mock workspaceHash to return a predictable value
+        sandbox.stub(utils, 'workspaceHash').returns('mock-hash-1234');
+        
+        // Ensure vscode.Uri exists and mock parse
+        if (!vscode.Uri) {
+            (vscode as any).Uri = {};
+        }
+        if (!vscode.Uri.parse) {
+            (vscode.Uri as any).parse = () => ({});
+        }
+        sandbox.stub(vscode.Uri, 'parse').callsFake((value: string) => ({
+            scheme: 'crashed-command',
+            path: value,
+            fsPath: value,
+            toString: () => value
+        } as any));
     });
 
     teardown(() => {

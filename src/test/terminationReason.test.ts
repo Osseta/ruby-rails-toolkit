@@ -2,9 +2,16 @@ import * as assert from 'assert';
 import * as path from 'path';
 import * as fs from 'fs';
 import { ProcessTracker } from '../processTracker';
+import * as sinon from 'sinon';
+import * as utils from '../utils';
 
 suite('Process Termination Reason Tests', () => {
     const testCode = 'TEST_PROCESS';
+    
+    setup(() => {
+        // Mock workspaceHash to return a predictable value
+        sinon.stub(utils, 'workspaceHash').returns('mock-hash-1234');
+    });
     
     teardown(() => {
         // Clean up any test files
@@ -13,6 +20,7 @@ suite('Process Termination Reason Tests', () => {
         } catch (error) {
             // Ignore cleanup errors
         }
+        sinon.restore();
     });
 
     test('should track user-requested termination', () => {

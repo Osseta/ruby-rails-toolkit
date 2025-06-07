@@ -6,6 +6,7 @@ import * as childProcess from 'child_process';
 import { EventEmitter } from 'events';
 import { ProcessTracker } from '../processTracker';
 import * as appCommand from '../appCommand';
+import * as utils from '../utils';
 
 suite('Process Crash Detection', () => {
     let sandbox: sinon.SinonSandbox;
@@ -20,6 +21,9 @@ suite('Process Crash Detection', () => {
     setup(() => {
         sandbox = sinon.createSandbox();
         
+        // Mock workspaceHash to return a predictable value
+        sandbox.stub(utils, 'workspaceHash').returns('mock-hash-1234');
+        
         // Initialize mock filesystem state
         mockFiles = new Map();
         mockDirectories = new Set();
@@ -32,13 +36,39 @@ suite('Process Crash Detection', () => {
             dispose: sandbox.stub()
         };
         
+        // Ensure vscode.window exists
+        if (!vscode.window) {
+            (vscode as any).window = {};
+        }
+        if (!vscode.window.createOutputChannel) {
+            (vscode.window as any).createOutputChannel = () => outputChannelStub;
+        }
+        if (!vscode.window.showErrorMessage) {
+            (vscode.window as any).showErrorMessage = () => Promise.resolve({ title: 'Show Output' });
+        }
+        
         createOutputChannelStub = sandbox.stub(vscode.window, 'createOutputChannel').returns(outputChannelStub);
         showErrorMessageStub = sandbox.stub(vscode.window, 'showErrorMessage').resolves({ title: 'Show Output' });
         
+        // Ensure vscode.workspace exists
+        if (!vscode.workspace) {
+            (vscode as any).workspace = {};
+        }
+        
         // Mock vscode.workspace.workspaceFolders for tests that need it
+        if (!vscode.workspace.workspaceFolders) {
+            (vscode.workspace as any).workspaceFolders = [];
+        }
         sandbox.stub(vscode.workspace, 'workspaceFolders').value([{
             uri: { fsPath: '/mock/workspace' }
         }]);
+        
+        // Mock vscode.workspace.getConfiguration only if not already done
+        if (!vscode.workspace.getConfiguration || typeof vscode.workspace.getConfiguration === 'function') {
+            vscode.workspace.getConfiguration = sandbox.stub().returns({
+                get: sandbox.stub().returns(true)
+            } as any);
+        }
 
         // Mock filesystem operations with stateful behavior
         sandbox.stub(fs, 'existsSync').callsFake((path: any) => {

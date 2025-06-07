@@ -4,6 +4,7 @@ import * as vscode from 'vscode';
 import { CommandStateManager } from '../commandStateManager';
 import { ProcessTracker } from '../processTracker';
 import type { Command } from '../types';
+import * as utils from '../utils';
 
 suite('CommandStateManager Tests', () => {
     let sandbox: sinon.SinonSandbox;
@@ -16,6 +17,9 @@ suite('CommandStateManager Tests', () => {
 
     setup(() => {
         sandbox = sinon.createSandbox();
+        
+        // Mock workspaceHash to return a predictable value
+        sandbox.stub(utils, 'workspaceHash').returns('mock-hash-1234');
         
         // Mock commands for testing
         mockCommands = [
@@ -163,12 +167,11 @@ suite('CommandStateManager Tests', () => {
         
         // Assert: Verify default state is returned for unknown code
         const state = manager.getButtonState('UNKNOWN_CODE');
-        assert.deepStrictEqual(state, {
-            exists: false,
-            debugActive: false,
-            terminationReason: 'none',
-            hasOutputChannel: false,
-            isLocked: false        }, 'Should return default state for unknown command codes');
+        assert.strictEqual(state.exists, false);
+        assert.strictEqual(state.debugActive, false);
+        assert.strictEqual(state.terminationReason, 'none');
+        assert.strictEqual(state.hasOutputChannel, false);
+        assert.strictEqual(state.isLocked, false);
     });
 
     test('should dispose properly and stop polling', () => {

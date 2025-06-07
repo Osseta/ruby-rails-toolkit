@@ -22,6 +22,7 @@ export type ProcessState = {
   terminationReason: ProcessTerminationReason;
   hasOutputChannel: boolean;
   isLocked: boolean;
+  workspaceHash?: string;
 };
 
 export type Command = {

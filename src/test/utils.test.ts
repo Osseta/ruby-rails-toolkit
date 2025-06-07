@@ -1,8 +1,19 @@
 import { suite, test } from 'mocha';
 import { strict as assert } from 'assert';
 import { extractPidFromRdbgSocketPath } from '../utils';
+import * as sinon from 'sinon';
+import * as utils from '../utils';
 
 suite('extractPidFromRdbgSocketPath', () => {
+  setup(() => {
+    // Mock workspaceHash to return a predictable value
+    sinon.stub(utils, 'workspaceHash').returns('mock-hash-1234');
+  });
+
+  teardown(() => {
+    sinon.restore();
+  });
+
   test('extracts PID from valid rdbg socket path', () => {
     const socketPath = '/tmp/rdbg-12345-RSPEC~abcdef.sock';
     const pid = extractPidFromRdbgSocketPath(socketPath);
