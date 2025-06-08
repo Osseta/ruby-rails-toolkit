@@ -1,0 +1,50 @@
+# Jekyll configuration for Ruby & Rails Developer Toolkit VS Code Extension site
+
+# Site settings
+title: Ruby & Rails Developer Toolkit
+description: A comprehensive VS Code extension for Ruby and Rails development
+url: "https://osseta.github.io"
+baseurl: "/ruby-rails-toolkit"
+
+# Repository
+repository: "Osseta/ruby-rails-toolkit"
+
+# Author/Maintainer
+author:
+  name: "Anthony Richardson"
+  github: "osseta"
+  url: "https://github.com/Osseta"
+
+# Theme
+remote_theme: pages-themes/midnight@v0.2.0
+
+# template fields
+github:
+  owner_url: "https://github.com/Osseta"
+  owner_name: "Osseta"
+
+# Plugins
+plugins:
+  - jekyll-remote-theme
+
+# Markdown processor
+markdown: kramdown
+highlighter: rouge
+
+# Build settings
+sass:
+  style: compressed
+
+# Exclude files from processing
+exclude:
+  - .github/
+  - .ruby-lsp/
+  - .DS_Store
+  - README.md
+
+# Collections and defaults
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: "default"
