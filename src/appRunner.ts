@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { runCommand, stopCommand, debugCommand, loadAppConfig, stopAllCommands, runAndDebugCommand } from './appCommand';
+import { runCommand, stopCommand, debugCommand, loadAppConfig, stopAllCommands, runAndDebugCommand, appCommandsFileExists, getDefaultAppConfig } from './appCommand';
 import { ProcessTracker } from './processTracker';
 import { CommandStateManager } from './commandStateManager';
 import type { Commands, Command, ProcessState } from './types';
@@ -188,7 +188,42 @@ export function registerAppRunnerTreeView(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.debug.onDidStartDebugSession(() => provider.refresh()));
     context.subscriptions.push(vscode.debug.onDidTerminateDebugSession(() => provider.refresh()));
 
-    context.subscriptions.push(vscode.commands.registerCommand('appRunner.refresh', () => provider.refresh()));
+    context.subscriptions.push(vscode.commands.registerCommand('appRunner.refresh', async () => {
+        // Always refresh - loadAppConfig() returns default commands if file doesn't exist
+        await provider.refresh();
+    }));
+    
+    // Register the menu command
+    context.subscriptions.push(vscode.commands.registerCommand('appRunner.showMenu', async () => {
+        const quickPickItems: vscode.QuickPickItem[] = [
+            {
+                label: "$(refresh) Refresh Commands",
+                description: "Reload commands from app_commands.jsonc file",
+                detail: "Loads default commands if .vscode/app_commands.jsonc doesn't exist"
+            },
+            {
+                label: "$(settings-gear) Open Settings",
+                description: "Open app_commands.jsonc configuration file",
+                detail: "Creates file with defaults if it doesn't exist"
+            }
+        ];
+        
+        const selected = await vscode.window.showQuickPick(quickPickItems, {
+            placeHolder: "Choose an action",
+            matchOnDescription: true,
+            matchOnDetail: true
+        });
+        
+        if (!selected) {
+            return;
+        }
+        
+        if (selected.label.includes('Refresh')) {
+            await vscode.commands.executeCommand('appRunner.refresh');
+        } else if (selected.label.includes('Settings')) {
+            await vscode.commands.executeCommand('appRunner.openSettings');
+        }
+    }));
     context.subscriptions.push(vscode.commands.registerCommand('appRunner.runAll', async () => {
         const config = loadAppConfig();
         for (const cmd of config.commands) {
@@ -232,6 +267,71 @@ export function registerAppRunnerTreeView(context: vscode.ExtensionContext) {
             if (outputChannel) {
                 outputChannel.show(true);
             }
+        }
+    }));
+    
+    // Register the settings command
+    context.subscriptions.push(vscode.commands.registerCommand('appRunner.openSettings', async () => {
+        const workspaceFolders = vscode.workspace.workspaceFolders;
+        if (!workspaceFolders || workspaceFolders.length === 0) {
+            vscode.window.showErrorMessage('No workspace folder found.');
+            return;
+        }
+        
+        const appCommandsPath = vscode.Uri.joinPath(workspaceFolders[0].uri, '.vscode', 'app_commands.jsonc');
+        
+        try {
+            // Check if the file exists
+            if (appCommandsFileExists()) {
+                // File exists, open it
+                const doc = await vscode.workspace.openTextDocument(appCommandsPath);
+                await vscode.window.showTextDocument(doc);
+            } else {
+                // File doesn't exist, create it directly with default content
+                const defaultConfig = getDefaultAppConfig();
+                
+                // Create JSONC content with helpful comments using standard comment syntax
+                const commentHeader = `{
+  // This is the App Runner configuration file for VS Code Ruby & Rails Toolkit
+  // After making changes to this file, use the Menu > Refresh Commands option to reload
+  
+  // Command Configuration Options:
+  // - code: unique identifier for the command
+  // - description: display name shown in the App Runner panel
+  // - command: the actual shell command to execute
+  // - commandType: 'ruby' for Ruby processes (enables debugging) or 'shell' for other commands
+`;
+                
+                // Remove the opening brace from the JSON and add our commented version
+                const configJson = JSON.stringify(defaultConfig, null, 2);
+                const configWithoutOpeningBrace = configJson.substring(1);
+                const defaultContent = commentHeader + configWithoutOpeningBrace;
+                
+                try {
+                    // Create .vscode directory if it doesn't exist
+                    const vscodeDir = vscode.Uri.joinPath(workspaceFolders[0].uri, '.vscode');
+                    try {
+                        await vscode.workspace.fs.stat(vscodeDir);
+                    } catch {
+                        // Directory doesn't exist, create it
+                        await vscode.workspace.fs.createDirectory(vscodeDir);
+                    }
+                    
+                    // Write the content directly to the file
+                    const encoder = new TextEncoder();
+                    await vscode.workspace.fs.writeFile(appCommandsPath, encoder.encode(defaultContent));
+                    
+                    // Open the saved file
+                    const savedDoc = await vscode.workspace.openTextDocument(appCommandsPath);
+                    await vscode.window.showTextDocument(savedDoc);
+                    
+                    vscode.window.showInformationMessage('App commands configuration created with default settings!');
+                } catch (saveError) {
+                    vscode.window.showErrorMessage(`Failed to create app commands configuration: ${saveError}`);
+                }
+            }
+        } catch (error) {
+            vscode.window.showErrorMessage(`Failed to open app commands settings: ${error}`);
         }
     }));
     

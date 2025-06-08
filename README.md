@@ -33,10 +33,11 @@ A powerful VS Code extension for Ruby and Rails development featuring one-click 
 ## ⚙️ Configuration
 
 ### App Commands
-Create `.vscode/app_commands.json` for custom commands:
+Create `.vscode/app_commands.jsonc` for custom commands:
 
-```json
+```jsonc
 {
+  // App Runner configuration for VS Code Ruby & Rails Toolkit
   "commands": [
     {
       "code": "RAILS",
@@ -48,13 +49,13 @@ Create `.vscode/app_commands.json` for custom commands:
       "code": "JOBS", 
       "description": "Jobs Worker",
       "command": "bundle exec rake jobs:work",
-      "commandType": "ruby",
+      "commandType": "ruby"
     },
     {
       "code": "WEBPACKER",
       "description": "Webpacker", 
       "command": "yarn dev",
-      "commandType": "shell",
+      "commandType": "shell"
     }
   ]
 }

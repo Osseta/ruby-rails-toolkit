@@ -1,16 +1,17 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import * as JSON5 from 'json5';
 import { Command, AppConfig } from './types';
 import { ProcessTracker } from './processTracker';
 import { FileLockManager } from './fileLockManager';
 import * as vscode from 'vscode';
 import { listRdbgSocks } from './utils';
 
-const APP_COMMANDS_FILENAME = 'app_commands.json';
+const APP_COMMANDS_FILENAME = 'app_commands.jsonc';
 const VSCODE_DIR = '.vscode';
 
 /**
- * Returns the absolute path to the app_commands.json file in the workspace .vscode directory.
+ * Returns the absolute path to the app_commands.jsonc file in the workspace .vscode directory.
  */
 function getAppCommandsFilePath(): string {
     const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -21,7 +22,7 @@ function getAppCommandsFilePath(): string {
 }
 
 /**
- * Checks if the app_commands.json file exists in the .vscode directory.
+ * Checks if the app_commands.jsonc file exists in the .vscode directory.
  * @returns true if the file exists, false otherwise
  */
 export function appCommandsFileExists(): boolean {
@@ -33,7 +34,7 @@ export function appCommandsFileExists(): boolean {
 }
 
 /**
- * Loads the AppConfig from the .vscode/app_commands.json file.
+ * Loads the AppConfig from the .vscode/app_commands.jsonc file.
  * @returns The loaded AppConfig object
  * @throws if the file does not exist or is invalid
  */
@@ -43,7 +44,7 @@ export function loadAppConfig(): AppConfig {
         return getDefaultAppConfig();
     }
     const content = fs.readFileSync(filePath, 'utf8');
-    return JSON.parse(content) as AppConfig;
+    return JSON5.parse(content) as AppConfig;
 }
 
 /**
@@ -63,13 +64,19 @@ export function getDefaultAppConfig(): AppConfig {
             description: 'Jobs Worker',
             command: 'bundle exec rake jobs:work',
             commandType: 'ruby'
+          },
+          {
+            code: 'WEBPACK',
+            description: 'Webpack Dev Server',
+            command: 'bin/shakapacker-dev-server',
+            commandType: 'shell'
           }
         ]
     };
 }
 
 /**
- * Saves the given AppConfig to the .vscode/app_commands.json file, overwriting if it exists.
+ * Saves the given AppConfig to the .vscode/app_commands.jsonc file, overwriting if it exists.
  * @param config The AppConfig to save
  */
 export function saveAppConfig(config: AppConfig): void {

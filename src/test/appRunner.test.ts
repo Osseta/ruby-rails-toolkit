@@ -30,6 +30,30 @@ suite('AppRunner', () => {
             fsPath: value,
             toString: () => value
         } as any));
+        
+        // Mock vscode.EventEmitter
+        if (!vscode.EventEmitter) {
+            (vscode as any).EventEmitter = class MockEventEmitter<T> {
+                private listeners: Array<(e: T) => void> = [];
+                
+                constructor() {}
+                
+                get event() {
+                    return (listener: (e: T) => void) => {
+                        this.listeners.push(listener);
+                        return { dispose: () => {} };
+                    };
+                }
+                
+                fire(data: T): void {
+                    this.listeners.forEach(listener => listener(data));
+                }
+                
+                dispose(): void {
+                    this.listeners = [];
+                }
+            };
+        }
     });
 
     teardown(() => {
@@ -267,6 +291,112 @@ suite('AppRunner', () => {
                 assert.ok(error instanceof Error);
                 assert.ok(error.message.includes('Run & Debug is only supported for Ruby commands'));
             }
+        });
+    });
+
+    suite('AppRunnerTreeDataProvider refresh command', () => {
+        test('should load default commands when app_commands.jsonc file does not exist', async () => {
+            // Mock filesystem to simulate file not existing and handle PID file operations
+            const mockFiles = new Map();
+            sandbox.stub(fs, 'existsSync').callsFake((path: any) => {
+                const pathStr = String(path);
+                if (pathStr.includes('app_commands.jsonc')) {
+                    return false; // Simulate app_commands.jsonc doesn't exist
+                }
+                return mockFiles.has(pathStr);
+            });
+            sandbox.stub(fs, 'readFileSync').callsFake((path: any) => {
+                return mockFiles.get(String(path)) || '';
+            });
+            sandbox.stub(fs, 'writeFileSync').callsFake((path: any, data: any) => {
+                mockFiles.set(String(path), String(data));
+            });
+            sandbox.stub(fs, 'unlinkSync').callsFake((path: any) => {
+                mockFiles.delete(String(path));
+            });
+            sandbox.stub(fs, 'mkdirSync').returns(undefined);
+            
+            // Mock process.kill to avoid killing actual processes
+            sandbox.stub(process, 'kill').returns(true as any);
+            
+            // Import after setting up mocks
+            const { AppRunnerTreeDataProvider } = await import('../appRunner');
+            const { getDefaultAppConfig } = await import('../appCommand');
+            
+            const provider = new AppRunnerTreeDataProvider();
+            
+            // Call refresh method
+            await provider.refresh();
+            
+            // Get the commands from the provider
+            const children = await provider.getChildren();
+            const defaultConfig = getDefaultAppConfig();
+            
+            // Should have loaded default commands
+            assert.strictEqual(children.length, defaultConfig.commands.length);
+            assert.strictEqual(children[0].cmd.code, defaultConfig.commands[0].code);
+            assert.strictEqual(children[0].cmd.description, defaultConfig.commands[0].description);
+            
+            if (children.length > 1) {
+                assert.strictEqual(children[1].cmd.code, defaultConfig.commands[1].code);
+                assert.strictEqual(children[1].cmd.description, defaultConfig.commands[1].description);
+            }
+        });
+
+        test('should load custom commands when app_commands.jsonc file exists', async () => {
+            const customConfig = {
+                commands: [
+                    {
+                        code: 'CUSTOM_CMD',
+                        description: 'Custom Test Command',
+                        command: 'echo "custom"',
+                        commandType: 'shell' as const
+                    }
+                ]
+            };
+            
+            // Mock filesystem to simulate file existing with custom content and handle PID file operations
+            const mockFiles = new Map();
+            sandbox.stub(fs, 'existsSync').callsFake((path: any) => {
+                const pathStr = String(path);
+                if (pathStr.includes('app_commands.jsonc')) {
+                    return true; // Simulate app_commands.jsonc exists
+                }
+                return mockFiles.has(pathStr);
+            });
+            sandbox.stub(fs, 'readFileSync').callsFake((path: any) => {
+                const pathStr = String(path);
+                if (pathStr.includes('app_commands.jsonc')) {
+                    return JSON.stringify(customConfig);
+                }
+                return mockFiles.get(pathStr) || '';
+            });
+            sandbox.stub(fs, 'writeFileSync').callsFake((path: any, data: any) => {
+                mockFiles.set(String(path), String(data));
+            });
+            sandbox.stub(fs, 'unlinkSync').callsFake((path: any) => {
+                mockFiles.delete(String(path));
+            });
+            sandbox.stub(fs, 'mkdirSync').returns(undefined);
+            
+            // Mock process.kill to avoid killing actual processes
+            sandbox.stub(process, 'kill').returns(true as any);
+            
+            // Import after setting up mocks
+            const { AppRunnerTreeDataProvider } = await import('../appRunner');
+            
+            const provider = new AppRunnerTreeDataProvider();
+            
+            // Call refresh method
+            await provider.refresh();
+            
+            // Get the commands from the provider
+            const children = await provider.getChildren();
+            
+            // Should have loaded custom commands
+            assert.strictEqual(children.length, 1);
+            assert.strictEqual(children[0].cmd.code, 'CUSTOM_CMD');
+            assert.strictEqual(children[0].cmd.description, 'Custom Test Command');
         });
     });
 });
