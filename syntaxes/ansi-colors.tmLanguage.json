@@ -1,0 +1,311 @@
+{
+  "name": "ANSI Colors Enhanced",
+  "scopeName": "text.ansi",
+  "patterns": [
+    {
+      "name": "ansi.complete.bold.cyan",
+      "match": "(\\[1m\\[36m)([^\\[]*?)(\\[0m)",
+      "captures": {
+        "1": { "name": "punctuation.definition.ansi.codes.bold.cyan" },
+        "2": { "name": "markup.bold entity.name.tag.ansi" },
+        "3": { "name": "punctuation.definition.ansi.codes.reset" }
+      }
+    },
+    {
+      "name": "ansi.complete.bold.blue",
+      "match": "(\\[1m\\[34m)([^\\[]*?)(\\[0m)",
+      "captures": {
+        "1": { "name": "punctuation.definition.ansi.codes.bold.blue" },
+        "2": { "name": "markup.bold entity.name.function.ansi" },
+        "3": { "name": "punctuation.definition.ansi.codes.reset" }
+      }
+    },
+    {
+      "name": "ansi.complete.bold.red",
+      "match": "(\\[1m\\[31m)([^\\[]*?)(\\[0m)",
+      "captures": {
+        "1": { "name": "punctuation.definition.ansi.codes.bold.red" },
+        "2": { "name": "markup.bold markup.deleted.ansi" },
+        "3": { "name": "punctuation.definition.ansi.codes.reset" }
+      }
+    },
+    {
+      "name": "ansi.complete.bold.green",
+      "match": "(\\[1m\\[32m)([^\\[]*?)(\\[0m)",
+      "captures": {
+        "1": { "name": "punctuation.definition.ansi.codes.bold.green" },
+        "2": { "name": "markup.bold markup.inserted.ansi" },
+        "3": { "name": "punctuation.definition.ansi.codes.reset" }
+      }
+    },
+    {
+      "name": "ansi.complete.bold.yellow",
+      "match": "(\\[1m\\[33m)([^\\[]*?)(\\[0m)",
+      "captures": {
+        "1": { "name": "punctuation.definition.ansi.codes.bold.yellow" },
+        "2": { "name": "markup.bold markup.changed.ansi" },
+        "3": { "name": "punctuation.definition.ansi.codes.reset" }
+      }
+    },
+    {
+      "name": "ansi.complete.bold.magenta",
+      "match": "(\\[1m\\[35m)([^\\[]*?)(\\[0m)",
+      "captures": {
+        "1": { "name": "punctuation.definition.ansi.codes.bold.magenta" },
+        "2": { "name": "markup.bold constant.numeric.ansi" },
+        "3": { "name": "punctuation.definition.ansi.codes.reset" }
+      }
+    },
+    {
+      "name": "ansi.complete.bold.white",
+      "match": "(\\[1m\\[37m)([^\\[]*?)(\\[0m)",
+      "captures": {
+        "1": { "name": "punctuation.definition.ansi.codes.bold.white" },
+        "2": { "name": "markup.bold foreground.ansi" },
+        "3": { "name": "punctuation.definition.ansi.codes.reset" }
+      }
+    },
+    {
+      "name": "ansi.complete.cyan",
+      "match": "(\\[36m)([^\\[]*?)(\\[0m)",
+      "captures": {
+        "1": { "name": "punctuation.definition.ansi.codes.cyan" },
+        "2": { "name": "entity.name.tag.ansi" },
+        "3": { "name": "punctuation.definition.ansi.codes.reset" }
+      }
+    },
+    {
+      "name": "ansi.complete.blue",
+      "match": "(\\[34m)([^\\[]*?)(\\[0m)",
+      "captures": {
+        "1": { "name": "punctuation.definition.ansi.codes.blue" },
+        "2": { "name": "entity.name.function.ansi" },
+        "3": { "name": "punctuation.definition.ansi.codes.reset" }
+      }
+    },
+    {
+      "name": "ansi.complete.red",
+      "match": "(\\[31m)([^\\[]*?)(\\[0m)",
+      "captures": {
+        "1": { "name": "punctuation.definition.ansi.codes.red" },
+        "2": { "name": "markup.deleted.ansi" },
+        "3": { "name": "punctuation.definition.ansi.codes.reset" }
+      }
+    },
+    {
+      "name": "ansi.complete.green",
+      "match": "(\\[32m)([^\\[]*?)(\\[0m)",
+      "captures": {
+        "1": { "name": "punctuation.definition.ansi.codes.green" },
+        "2": { "name": "markup.inserted.ansi" },
+        "3": { "name": "punctuation.definition.ansi.codes.reset" }
+      }
+    },
+    {
+      "name": "ansi.complete.yellow",
+      "match": "(\\[33m)([^\\[]*?)(\\[0m)",
+      "captures": {
+        "1": { "name": "punctuation.definition.ansi.codes.yellow" },
+        "2": { "name": "markup.changed.ansi" },
+        "3": { "name": "punctuation.definition.ansi.codes.reset" }
+      }
+    },
+    {
+      "name": "ansi.complete.magenta",
+      "match": "(\\[35m)([^\\[]*?)(\\[0m)",
+      "captures": {
+        "1": { "name": "punctuation.definition.ansi.codes.magenta" },
+        "2": { "name": "constant.numeric.ansi" },
+        "3": { "name": "punctuation.definition.ansi.codes.reset" }
+      }
+    },
+    {
+      "name": "ansi.complete.white",
+      "match": "(\\[37m)([^\\[]*?)(\\[0m)",
+      "captures": {
+        "1": { "name": "punctuation.definition.ansi.codes.white" },
+        "2": { "name": "foreground.ansi" },
+        "3": { "name": "punctuation.definition.ansi.codes.reset" }
+      }
+    },
+    {
+      "name": "ansi.complete.bold.only",
+      "match": "(\\[1m)([^\\[]*?)(\\[0m)",
+      "captures": {
+        "1": { "name": "punctuation.definition.ansi.codes.bold" },
+        "2": { "name": "markup.bold.ansi" },
+        "3": { "name": "punctuation.definition.ansi.codes.reset" }
+      }
+    },
+    {
+      "name": "ansi.complete.escape.bold.cyan",
+      "match": "(\\x1b\\[1m\\x1b\\[36m)([^\\x1b]*?)(\\x1b\\[0m)",
+      "captures": {
+        "1": { "name": "punctuation.definition.ansi.codes.escape.bold.cyan" },
+        "2": { "name": "markup.bold entity.name.tag.ansi" },
+        "3": { "name": "punctuation.definition.ansi.codes.escape.reset" }
+      }
+    },
+    {
+      "name": "ansi.complete.escape.bold.blue",
+      "match": "(\\x1b\\[1m\\x1b\\[34m)([^\\x1b]*?)(\\x1b\\[0m)",
+      "captures": {
+        "1": { "name": "punctuation.definition.ansi.codes.escape.bold.blue" },
+        "2": { "name": "markup.bold entity.name.function.ansi" },
+        "3": { "name": "punctuation.definition.ansi.codes.escape.reset" }
+      }
+    },
+    {
+      "name": "ansi.complete.escape.bold.red",
+      "match": "(\\x1b\\[1m\\x1b\\[31m)([^\\x1b]*?)(\\x1b\\[0m)",
+      "captures": {
+        "1": { "name": "punctuation.definition.ansi.codes.escape.bold.red" },
+        "2": { "name": "markup.bold markup.deleted.ansi" },
+        "3": { "name": "punctuation.definition.ansi.codes.escape.reset" }
+      }
+    },
+    {
+      "name": "ansi.complete.escape.bold.green",
+      "match": "(\\x1b\\[1m\\x1b\\[32m)([^\\x1b]*?)(\\x1b\\[0m)",
+      "captures": {
+        "1": { "name": "punctuation.definition.ansi.codes.escape.bold.green" },
+        "2": { "name": "markup.bold markup.inserted.ansi" },
+        "3": { "name": "punctuation.definition.ansi.codes.escape.reset" }
+      }
+    },
+    {
+      "name": "ansi.complete.escape.bold.yellow",
+      "match": "(\\x1b\\[1m\\x1b\\[33m)([^\\x1b]*?)(\\x1b\\[0m)",
+      "captures": {
+        "1": { "name": "punctuation.definition.ansi.codes.escape.bold.yellow" },
+        "2": { "name": "markup.bold markup.changed.ansi" },
+        "3": { "name": "punctuation.definition.ansi.codes.escape.reset" }
+      }
+    },
+    {
+      "name": "ansi.complete.escape.bold.magenta",
+      "match": "(\\x1b\\[1m\\x1b\\[35m)([^\\x1b]*?)(\\x1b\\[0m)",
+      "captures": {
+        "1": { "name": "punctuation.definition.ansi.codes.escape.bold.magenta" },
+        "2": { "name": "markup.bold constant.numeric.ansi" },
+        "3": { "name": "punctuation.definition.ansi.codes.escape.reset" }
+      }
+    },
+    {
+      "name": "ansi.complete.escape.bold.white",
+      "match": "(\\x1b\\[1m\\x1b\\[37m)([^\\x1b]*?)(\\x1b\\[0m)",
+      "captures": {
+        "1": { "name": "punctuation.definition.ansi.codes.escape.bold.white" },
+        "2": { "name": "markup.bold foreground.ansi" },
+        "3": { "name": "punctuation.definition.ansi.codes.escape.reset" }
+      }
+    },
+    {
+      "name": "ansi.complete.escape.cyan",
+      "match": "(\\x1b\\[36m)([^\\x1b]*?)(\\x1b\\[0m)",
+      "captures": {
+        "1": { "name": "punctuation.definition.ansi.codes.escape.cyan" },
+        "2": { "name": "entity.name.tag.ansi" },
+        "3": { "name": "punctuation.definition.ansi.codes.escape.reset" }
+      }
+    },
+    {
+      "name": "ansi.complete.escape.blue",
+      "match": "(\\x1b\\[34m)([^\\x1b]*?)(\\x1b\\[0m)",
+      "captures": {
+        "1": { "name": "punctuation.definition.ansi.codes.escape.blue" },
+        "2": { "name": "entity.name.function.ansi" },
+        "3": { "name": "punctuation.definition.ansi.codes.escape.reset" }
+      }
+    },
+    {
+      "name": "ansi.complete.escape.red",
+      "match": "(\\x1b\\[31m)([^\\x1b]*?)(\\x1b\\[0m)",
+      "captures": {
+        "1": { "name": "punctuation.definition.ansi.codes.escape.red" },
+        "2": { "name": "markup.deleted.ansi" },
+        "3": { "name": "punctuation.definition.ansi.codes.escape.reset" }
+      }
+    },
+    {
+      "name": "ansi.complete.escape.green",
+      "match": "(\\x1b\\[32m)([^\\x1b]*?)(\\x1b\\[0m)",
+      "captures": {
+        "1": { "name": "punctuation.definition.ansi.codes.escape.green" },
+        "2": { "name": "markup.inserted.ansi" },
+        "3": { "name": "punctuation.definition.ansi.codes.escape.reset" }
+      }
+    },
+    {
+      "name": "ansi.complete.escape.yellow",
+      "match": "(\\x1b\\[33m)([^\\x1b]*?)(\\x1b\\[0m)",
+      "captures": {
+        "1": { "name": "punctuation.definition.ansi.codes.escape.yellow" },
+        "2": { "name": "markup.changed.ansi" },
+        "3": { "name": "punctuation.definition.ansi.codes.escape.reset" }
+      }
+    },
+    {
+      "name": "ansi.complete.escape.magenta",
+      "match": "(\\x1b\\[35m)([^\\x1b]*?)(\\x1b\\[0m)",
+      "captures": {
+        "1": { "name": "punctuation.definition.ansi.codes.escape.magenta" },
+        "2": { "name": "constant.numeric.ansi" },
+        "3": { "name": "punctuation.definition.ansi.codes.escape.reset" }
+      }
+    },
+    {
+      "name": "ansi.complete.escape.white",
+      "match": "(\\x1b\\[37m)([^\\x1b]*?)(\\x1b\\[0m)",
+      "captures": {
+        "1": { "name": "punctuation.definition.ansi.codes.escape.white" },
+        "2": { "name": "foreground.ansi" },
+        "3": { "name": "punctuation.definition.ansi.codes.escape.reset" }
+      }
+    },
+    {
+      "name": "ansi.complete.escape.bold.only",
+      "match": "(\\x1b\\[1m)([^\\x1b]*?)(\\x1b\\[0m)",
+      "captures": {
+        "1": { "name": "punctuation.definition.ansi.codes.escape.bold" },
+        "2": { "name": "markup.bold.ansi" },
+        "3": { "name": "punctuation.definition.ansi.codes.escape.reset" }
+      }
+    },
+    {
+      "name": "ansi.standalone.reset.bracket",
+      "match": "\\[0m",
+      "captures": {
+        "0": { "name": "punctuation.definition.ansi.codes.reset" }
+      }
+    },
+    {
+      "name": "ansi.raw.escape.character",
+      "match": "\\x1b",
+      "captures": {
+        "0": { "name": "constant.character.escape.ansi" }
+      }
+    },
+    {
+      "name": "ansi.standalone.reset.escape",
+      "match": "\\x1b\\[0m",
+      "captures": {
+        "0": { "name": "punctuation.definition.ansi.codes.escape.reset" }
+      }
+    },
+    {
+      "name": "ansi.fallback.bracket.sequence",
+      "match": "\\[[0-9;]*m",
+      "captures": {
+        "0": { "name": "punctuation.definition.ansi.codes.other" }
+      }
+    },
+    {
+      "name": "ansi.fallback.escape.sequence",
+      "match": "\\x1b\\[[0-9;]*m",
+      "captures": {
+        "0": { "name": "punctuation.definition.ansi.codes.escape.other" }
+      }
+    }
+  ]
+}

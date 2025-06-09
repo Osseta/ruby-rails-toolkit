@@ -65,6 +65,7 @@ Create `.vscode/app_commands.jsonc` for custom commands:
 - `rubyToolkit.automaticallyShowOutputForCommand`: Auto-show output (default: `true`)
 - `rubyToolkit.clearOutputChannelOnProcessRun`: Clear output on restart (default: `true`)
 - `rubyToolkit.showProcessOutputOnServer500Errors`: Show output on 500 errors (default: `true`)
+- `rubyToolkit.hideAnsiPunctuation`: Hide ANSI escape code punctuation and control characters in log output (default: `true`)
 
 ## 🎯 Key Actions
 

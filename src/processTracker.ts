@@ -205,7 +205,7 @@ export class ProcessTracker {
         // Create or reuse output channel
         let outputChannel = this.outputChannels.get(code);
         if (!outputChannel) {
-            outputChannel = vscode.window.createOutputChannel(`Run: ${code}`);
+            outputChannel = vscode.window.createOutputChannel(`Run: ${code}`, 'ansi-colors');
             this.outputChannels.set(code, outputChannel);
         } else {
             // Clear existing output channel contents when starting a new process (if setting is enabled)

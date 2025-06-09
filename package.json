@@ -64,7 +64,18 @@
           "type": "boolean",
           "default": true,
           "description": "Clear output channel on process run"
+        },
+        "rubyToolkit.hideAnsiPunctuation": {
+          "type": "boolean",
+          "default": true,
+          "description": "Hide ANSI escape code punctuation by making it the same color as the background"
         }
+      }
+    },
+    "configurationDefaults": {
+      "[ansi-colors]": {
+        "editor.renderWhitespace": "none",
+        "editor.renderControlCharacters": false
       }
     },
     "viewsContainers": {
@@ -249,6 +260,34 @@
           "light": "#f57c00",
           "highContrast": "#ffab40"
         }
+      },
+      {
+        "id": "ansi.punctuation.definition.foreground",
+        "description": "Foreground color for ANSI escape code punctuation (set to background color to hide)",
+        "defaults": {
+          "dark": "#1e1e1e",
+          "light": "#ffffff",
+          "highContrast": "#000000"
+        }
+      }
+    ],
+    "languages": [
+      {
+        "id": "ansi-colors",
+        "aliases": [
+          "ANSI Colors",
+          "ansi"
+        ],
+        "mimetypes": [
+          "text/x-ansi"
+        ]
+      }
+    ],
+    "grammars": [
+      {
+        "language": "ansi-colors",
+        "scopeName": "text.ansi",
+        "path": "./syntaxes/ansi-colors.tmLanguage.json"
       }
     ]
   },
@@ -265,7 +304,7 @@
     "@types/ejs": "^3.1.5",
     "@types/json5": "^0.0.30",
     "@types/mocha": "^10.0.7",
-    "@types/node": "20.x",
+    "@types/node": "^20.19.0",
     "@types/sinon": "^17.0.4",
     "@types/vscode": "^1.80.0",
     "@typescript-eslint/eslint-plugin": "^8.3.0",
