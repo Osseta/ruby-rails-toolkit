@@ -445,11 +445,34 @@ export class ProcessTracker {
             const filePathPattern = /(?:^|\s|"|')((?:\/)?(?:[a-zA-Z_][a-zA-Z0-9_-]*\/)*[a-zA-Z_][a-zA-Z0-9_.-]*\.[a-zA-Z0-9]+(?::\d+(?::[^\s"']*)?)?)/g;
             
             let processedLine = line;
+            let trimmedLine = line.trim();
             
+            // Handle Rails render commands first
+            if (trimmedLine.startsWith('Rendered') && !line.includes('file://') && !trimmedLine.startsWith('Rendering')) {
+                // Pattern to match Rails render commands like:
+                // Rendered cart/_order_display.html.slim (Duration: 6.5ms | Allocations: 22377)
+                // Rendered order/view.html.slim within layouts/application (Duration: 195.7ms | Allocations: 177750)
+                // Rendered layout layouts/application.html.erb (Duration: 280.9ms | Allocations: 263813)
+                const railsRenderPattern = /^(\s*)Rendered\s+(layout\s+)?([^\s(]+\.[a-zA-Z0-9]+)(\s+within\s+[^\s(]+)?(\s+\(.+)/;
+                const match = line.match(railsRenderPattern);
+                
+                if (match) {
+                    const indent = match[1];
+                    const layoutPrefix = match[2] || '';
+                    const viewPath = match[3];
+                    const withinClause = match[4] || '';
+                    const remaining = match[5] || '';
+                    const workspaceDir = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '';
+                    
+                    // Convert view path to file URI with app/views/ prefix
+                    const fullViewPath = `file://${workspaceDir}/app/views/${viewPath}`;
+                    processedLine = `${indent}Rendered ${layoutPrefix}${fullViewPath}${withinClause}${remaining}`;
+                }
+            }
             // Only process if the line doesn't already contain 'file://'
             // is not a StatsD log line, and does not contain 'Rendered' to avoid matching
             // rails view rendering log which don't include full file information.
-            if (!line.includes('file://') && !line.includes('[StatsD]') && !line.includes('Rendered')) {
+            else if (!line.includes('file://') && !line.includes('[StatsD]') && !trimmedLine.startsWith('Rendering layout')) {
                 processedLine = line.replace(filePathPattern, (match, path) => {
                     // Check if the path is a valid file (has extension) and is either:
                     // 1. Has a path separator (directory/file.ext)

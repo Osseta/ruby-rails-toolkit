@@ -303,6 +303,128 @@ suite('ProcessTracker', () => {
             });
         });
 
+        test('should convert Rails render commands to clickable file URIs', () => {
+            const testCases = [
+                { 
+                    input: '  Rendered cart/_order_display.html.slim (Duration: 6.5ms | Allocations: 22377)',
+                    expected: '  Rendered file:///mock/workspace/app/views/cart/_order_display.html.slim (Duration: 6.5ms | Allocations: 22377)'
+                },
+                { 
+                    input: '  Rendered order/view.html.slim within layouts/application (Duration: 195.7ms | Allocations: 177750)',
+                    expected: '  Rendered file:///mock/workspace/app/views/order/view.html.slim within layouts/application (Duration: 195.7ms | Allocations: 177750)'
+                },
+                { 
+                    input: '  Rendered layouts/_greedysteed_icon_font.html.erb (Duration: 2.0ms | Allocations: 1544)',
+                    expected: '  Rendered file:///mock/workspace/app/views/layouts/_greedysteed_icon_font.html.erb (Duration: 2.0ms | Allocations: 1544)'
+                },
+                { 
+                    input: '  Rendered layouts/_navbar.html.slim (Duration: 5.3ms | Allocations: 16045)',
+                    expected: '  Rendered file:///mock/workspace/app/views/layouts/_navbar.html.slim (Duration: 5.3ms | Allocations: 16045)'
+                },
+                { 
+                    input: '  Rendered layouts/_breadcrumbs.html.slim (Duration: 2.2ms | Allocations: 2813)',
+                    expected: '  Rendered file:///mock/workspace/app/views/layouts/_breadcrumbs.html.slim (Duration: 2.2ms | Allocations: 2813)'
+                },
+                { 
+                    input: '  Rendered layouts/_footer.html.erb (Duration: 0.4ms | Allocations: 191)',
+                    expected: '  Rendered file:///mock/workspace/app/views/layouts/_footer.html.erb (Duration: 0.4ms | Allocations: 191)'
+                },
+                { 
+                    input: '  Rendered layouts/_analytics.html.erb (Duration: 0.2ms | Allocations: 156)',
+                    expected: '  Rendered file:///mock/workspace/app/views/layouts/_analytics.html.erb (Duration: 0.2ms | Allocations: 156)'
+                },
+                { 
+                    input: '  Rendered layout layouts/application.html.erb (Duration: 280.9ms | Allocations: 263813)',
+                    expected: '  Rendered layout file:///mock/workspace/app/views/layouts/application.html.erb (Duration: 280.9ms | Allocations: 263813)'
+                }
+            ];
+
+            testCases.forEach(({ input, expected }) => {
+                const result = ProcessTracker.preprocessOutputData(input);
+                assert.strictEqual(result, expected, `Failed for input: ${input}`);
+            });
+        });
+
+        test('should NOT modify "Rendering" lines that already have file:// URIs', () => {
+            const testCases = [
+                { 
+                    input: '  Rendering layout file:///Users/anthonyrichardson/techony/greedysteed/layouts/application.html.erb',
+                    expected: '  Rendering layout file:///Users/anthonyrichardson/techony/greedysteed/layouts/application.html.erb'
+                },
+                { 
+                    input: '  Rendering file:///Users/anthonyrichardson/techony/greedysteed/order/view.html.slim within layouts/application',
+                    expected: '  Rendering file:///Users/anthonyrichardson/techony/greedysteed/order/view.html.slim within layouts/application'
+                }
+            ];
+
+            testCases.forEach(({ input, expected }) => {
+                const result = ProcessTracker.preprocessOutputData(input);
+                assert.strictEqual(result, expected, `Failed for input: ${input}`);
+            });
+        });
+
+        test('should NOT modify lines that already contain file:// URIs', () => {
+            const testCases = [
+                { 
+                    input: '  Rendered file:///mock/workspace/app/views/cart/_order_display.html.slim (Duration: 6.5ms)',
+                    expected: '  Rendered file:///mock/workspace/app/views/cart/_order_display.html.slim (Duration: 6.5ms)'
+                },
+                { 
+                    input: 'Something file://already/converted/path.rb:123',
+                    expected: 'Something file://already/converted/path.rb:123'
+                }
+            ];
+
+            testCases.forEach(({ input, expected }) => {
+                const result = ProcessTracker.preprocessOutputData(input);
+                assert.strictEqual(result, expected, `Failed for input: ${input}`);
+            });
+        });
+
+        test('should handle Rails render commands with various indentation levels', () => {
+            const testCases = [
+                { 
+                    input: 'Rendered users/index.html.erb (Duration: 15.0ms | Allocations: 5000)',
+                    expected: 'Rendered file:///mock/workspace/app/views/users/index.html.erb (Duration: 15.0ms | Allocations: 5000)'
+                },
+                { 
+                    input: '    Rendered admin/dashboard.html.slim (Duration: 25.0ms | Allocations: 7500)',
+                    expected: '    Rendered file:///mock/workspace/app/views/admin/dashboard.html.slim (Duration: 25.0ms | Allocations: 7500)'
+                },
+                { 
+                    input: '\t\tRendered shared/_header.html.erb (Duration: 3.0ms | Allocations: 800)',
+                    expected: '\t\tRendered file:///mock/workspace/app/views/shared/_header.html.erb (Duration: 3.0ms | Allocations: 800)'
+                }
+            ];
+
+            testCases.forEach(({ input, expected }) => {
+                const result = ProcessTracker.preprocessOutputData(input);
+                assert.strictEqual(result, expected, `Failed for input: ${input}`);
+            });
+        });
+
+        test('should handle Rails render commands with different view file extensions', () => {
+            const testCases = [
+                { 
+                    input: '  Rendered products/show.html.haml (Duration: 12.5ms | Allocations: 3200)',
+                    expected: '  Rendered file:///mock/workspace/app/views/products/show.html.haml (Duration: 12.5ms | Allocations: 3200)'
+                },
+                { 
+                    input: '  Rendered api/v1/users.json.jbuilder (Duration: 8.2ms | Allocations: 1800)',
+                    expected: '  Rendered file:///mock/workspace/app/views/api/v1/users.json.jbuilder (Duration: 8.2ms | Allocations: 1800)'
+                },
+                { 
+                    input: '  Rendered emails/welcome.text.erb (Duration: 4.1ms | Allocations: 950)',
+                    expected: '  Rendered file:///mock/workspace/app/views/emails/welcome.text.erb (Duration: 4.1ms | Allocations: 950)'
+                }
+            ];
+
+            testCases.forEach(({ input, expected }) => {
+                const result = ProcessTracker.preprocessOutputData(input);
+                assert.strictEqual(result, expected, `Failed for input: ${input}`);
+            });
+        });
+
         test('should handle files with extra text after line numbers', () => {
             const testCases = [
                 { input: 'dir/file.rb:45:on frrcr', expected: 'file:///mock/workspace/dir/file.rb:45 :on frrcr' },
@@ -480,41 +602,6 @@ suite('ProcessTracker', () => {
             });
         });
 
-        test('should not process lines that contain Rendered', () => {
-            const testCases = [
-                { 
-                    input: 'Rendered app/views/users/show.html.erb:15', 
-                    expected: 'Rendered app/views/users/show.html.erb:15',
-                    description: 'Rails rendered view line should remain unchanged'
-                },
-                { 
-                    input: 'Template Rendered in app/views/layouts/application.html.erb:20', 
-                    expected: 'Template Rendered in app/views/layouts/application.html.erb:20',
-                    description: 'line containing Rendered should remain unchanged'
-                },
-                { 
-                    input: 'Rendered partial: app/views/shared/_header.html.erb:5', 
-                    expected: 'Rendered partial: app/views/shared/_header.html.erb:5',
-                    description: 'rendered partial line should remain unchanged'
-                },
-                { 
-                    input: 'Successfully Rendered views/posts/index.html.erb:45 in 123ms', 
-                    expected: 'Successfully Rendered views/posts/index.html.erb:45 in 123ms',
-                    description: 'line with Rendered anywhere should remain unchanged'
-                },
-                { 
-                    input: 'Rendered /absolute/path/views/error.html.erb:10', 
-                    expected: 'Rendered /absolute/path/views/error.html.erb:10',
-                    description: 'rendered line with absolute path should remain unchanged'
-                }
-            ];
-
-            testCases.forEach(({ input, expected, description }) => {
-                const result = ProcessTracker.preprocessOutputData(input);
-                assert.strictEqual(result, expected, `Failed: ${description} - input: ${input}`);
-            });
-        });
-
         test('should process normal lines that do not contain filtering keywords', () => {
             const testCases = [
                 { 
@@ -566,11 +653,6 @@ Processing file:///mock/workspace/src/component.tsx:50`;
 
         test('should handle edge cases with filtering keywords as part of larger words', () => {
             const testCases = [
-                { 
-                    input: 'fileRendered app/models/user.rb:45', 
-                    expected: 'fileRendered app/models/user.rb:45',
-                    description: 'should NOT process when Rendered is part of another word (line.includes behavior)'
-                },
                 { 
                     input: 'custom[StatsD]Logger app/helper.rb:20', 
                     expected: 'custom[StatsD]Logger app/helper.rb:20',
