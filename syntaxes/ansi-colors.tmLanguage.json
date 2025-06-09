@@ -3,6 +3,23 @@
   "scopeName": "text.ansi",
   "patterns": [
     {
+      "name": "file.link.with.line.number",
+      "match": "(file://.*/)([^/:]+)(:[0-9]+)",
+      "captures": {
+        "1": { "name": "punctuation.definition.tag.file.path.ansi" },
+        "2": { "name": "variable.language.file.name.ansi" },
+        "3": { "name": "constant.numeric.file.line.ansi" }
+      }
+    },
+    {
+      "name": "file.link.without.line.number",
+      "match": "(file://.*/)([^/\\s:]+)(?=\\s|$)",
+      "captures": {
+        "1": { "name": "punctuation.definition.tag.file.path.ansi" },
+        "2": { "name": "variable.language.file.name.ansi" }
+      }
+    },
+    {
       "name": "ansi.complete.bold.cyan",
       "match": "(\\[1m\\[36m)([^\\[]*?)(\\[0m)",
       "captures": {
