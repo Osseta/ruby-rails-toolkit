@@ -20,6 +20,14 @@
       }
     },
     {
+      "name": "rails.http.request.url",
+      "match": "^Started\\s+(GET|POST|DELETE|PATCH|PUT|HEAD|OPTIONS)\\s+(\"[^\"]+\")",
+      "captures": {
+        "1": { "name": "keyword.control.ansi" },
+        "2": { "name": "string.regexp" }
+      }
+    },
+    {
       "name": "ansi.complete.bold.cyan",
       "match": "(\\[1m\\[36m)([^\\[]*?)(\\[0m)",
       "captures": {
