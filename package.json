@@ -271,21 +271,9 @@
         }
       }
     ],
-    "languages": [
-      {
-        "id": "ansi-colors",
-        "aliases": [
-          "ANSI Colors",
-          "ansi"
-        ],
-        "mimetypes": [
-          "text/x-ansi"
-        ]
-      }
-    ],
     "grammars": [
       {
-        "language": "ansi-colors",
+        "language": "Log",
         "scopeName": "text.ansi",
         "path": "./syntaxes/ansi-colors.tmLanguage.json"
       }

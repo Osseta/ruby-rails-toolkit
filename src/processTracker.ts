@@ -205,7 +205,11 @@ export class ProcessTracker {
         // Create or reuse output channel
         let outputChannel = this.outputChannels.get(code);
         if (!outputChannel) {
-            outputChannel = vscode.window.createOutputChannel(`Run: ${code}`, 'ansi-colors');
+            // outputChannels use the default language `Log`. Although you can set a specific language if 
+            // needed it breaks the file linking :-(
+            // This extension instead extends the `Log` language to support ANSI colors and other rails
+            // specific features.
+            outputChannel = vscode.window.createOutputChannel(`Run: ${code}`);            
             this.outputChannels.set(code, outputChannel);
         } else {
             // Clear existing output channel contents when starting a new process (if setting is enabled)
