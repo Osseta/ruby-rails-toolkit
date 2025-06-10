@@ -182,15 +182,21 @@ export class FileLockManager {
      * @param commandCode The command code to lock
      * @param fn The function to execute while holding the lock
      * @param options Lock options
+     * @param onLockAcquired Optional callback called immediately after lock is acquired
      * @returns Promise that resolves with the function result
      */
     static async withLock<T>(
         commandCode: string, 
         fn: () => Promise<T> | T, 
-        options: FileLockOptions = {}
+        options: FileLockOptions = {},
+        onLockAcquired?: () => void | Promise<void>
     ): Promise<T> {
         await this.acquireLock(commandCode, options);
         try {
+            // Call the callback immediately after lock acquisition
+            if (onLockAcquired) {
+                await onLockAcquired();
+            }
             return await fn();
         } finally {
             this.releaseLock(commandCode);

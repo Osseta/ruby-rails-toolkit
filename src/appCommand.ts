@@ -6,9 +6,21 @@ import { ProcessTracker } from './processTracker';
 import { FileLockManager } from './fileLockManager';
 import * as vscode from 'vscode';
 import { listRdbgSocks } from './utils';
+import { getLogger } from './logger';
 
 const APP_COMMANDS_FILENAME = 'app_commands.jsonc';
 const VSCODE_DIR = '.vscode';
+
+// Global callback for immediate tree view updates
+let onLockAcquiredCallback: (() => void | Promise<void>) | undefined;
+
+/**
+ * Registers a callback to be called immediately when a lock is acquired.
+ * This is used to trigger immediate tree view updates to show loading spinners.
+ */
+export function setOnLockAcquiredCallback(callback: () => void | Promise<void>): void {
+    onLockAcquiredCallback = callback;
+}
 
 /**
  * Returns the absolute path to the app_commands.jsonc file in the workspace .vscode directory.
@@ -94,24 +106,36 @@ export function saveAppConfig(config: AppConfig): void {
  * @param waitFlag Optional wait flag override for rdbg (defaults to '-n' for no wait)
  */
 export async function runCommand(command: Command, waitFlag: string = '-n') {
+    const logger = getLogger();
+    logger.info(`Starting command: ${command.code}`, { 
+        description: command.description,
+        commandType: command.commandType,
+        waitFlag 
+    });
+    
     return await FileLockManager.withLock(command.code, async () => {
         let commandToRun = command.command;
 
         if (command.commandType === 'ruby') {
             // Prepend rdbg to the command for debugging
             commandToRun = buildRdbgCommand(command.code, command.command, waitFlag);
+            logger.debug(`Built rdbg command for ${command.code}`, { commandToRun });
         }
         
-        const childProcess = ProcessTracker.spawnAndTrack({
+        const childProcess = await ProcessTracker.spawnAndTrack({
             code: command.code,
             command: commandToRun,
             args: [],
             options: { stdio: 'ignore' }
         });
 
+        logger.debug(`Process spawned for ${command.code}`, { pid: childProcess.pid });
+
         // Show output channel if setting is enabled
         await showOutputChannelIfEnabled(command.code);
-    });
+        
+        logger.info(`Command ${command.code} started successfully`);
+    }, {}, onLockAcquiredCallback);
 }
 
 /**
@@ -120,31 +144,41 @@ export async function runCommand(command: Command, waitFlag: string = '-n') {
  * @param command The command to run in debug mode
  */
 export async function runAndDebugCommand(command: Command) {
+    const logger = getLogger();
+    
     if (command.commandType !== 'ruby') {
-        // For shell commands, debugging is not supported
+        logger.error(`Attempted to run & debug non-Ruby command: ${command.code}`);
         throw new Error('Run & Debug is only supported for Ruby commands');
     }
+
+    logger.info(`Starting Run & Debug for command: ${command.code}`);
 
     return await FileLockManager.withLock(command.code, async () => {
         // Start the command with wait flag (empty string means wait for debugger)
         const commandToRun = buildRdbgCommand(command.code, command.command, '');
+        logger.debug(`Built rdbg command for debugging ${command.code}`, { commandToRun });
         
-        const childProcess = ProcessTracker.spawnAndTrack({
+        const childProcess = await ProcessTracker.spawnAndTrack({
             code: command.code,
             command: commandToRun,
             args: [],
             options: { stdio: 'ignore' }
         });
 
+        logger.debug(`Debug process spawned for ${command.code}`, { pid: childProcess.pid });
+
         // Show output channel if setting is enabled
         await showOutputChannelIfEnabled(command.code);
 
         // Wait for the rdbg socket to appear and then start debugging
+        logger.debug(`Waiting for rdbg socket for ${command.code}`);
         const socketFile = await waitForRdbgSocket(command.code);
+        logger.info(`Found rdbg socket for ${command.code}`, { socketFile });
 
         // Start VS Code debugger and attach to rdbg
         await startVSCodeDebugSession(command.code, socketFile);
-    });
+        logger.info(`Debug session started for ${command.code}`);
+    }, {}, onLockAcquiredCallback);
 }
 
 /**
@@ -152,9 +186,14 @@ export async function runAndDebugCommand(command: Command) {
  * @param command The command to stop
  */
 export async function stopCommand(command: Command) {
+    const logger = getLogger();
+    logger.info(`Stopping command: ${command.code}`);
+    
     return await FileLockManager.withLock(command.code, async () => {
-        ProcessTracker.stopProcess(command.code);
-    });
+        logger.debug(`Command ${command.code} stop requested`);
+        await ProcessTracker.stopProcess(command.code);
+        logger.debug(`Command ${command.code} stop completed`);
+    }, {}, onLockAcquiredCallback);
 }
 
 /**
@@ -165,17 +204,22 @@ export async function stopCommand(command: Command) {
  * regardless of whether they are configured in the current workspace.
  */
 export async function stopAllCommands(): Promise<void> {
+    const logger = getLogger();
+    
     // Get all running process codes from pid files
     const runningCodes = ProcessTracker.listRunningCodes();
+    logger.info(`Stopping all commands`, { runningCodes, count: runningCodes.length });
     
     // Stop all running processes in parallel, each with its own lock
     const stopPromises = runningCodes.map(async (code) => {
+        logger.debug(`Stopping command ${code}`);
         await FileLockManager.withLock(code, async () => {
-            ProcessTracker.stopProcess(code);
-        });
+            await ProcessTracker.stopProcess(code);
+        }, {}, onLockAcquiredCallback);
     });
     
     await Promise.all(stopPromises);
+    logger.info(`All commands stopped successfully`);
 }
 
 /**
@@ -210,7 +254,7 @@ export async function debugCommand(command: Command) {
             autoAttach: true,
             cwd: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || process.cwd(),
         });
-    });
+    }, {}, onLockAcquiredCallback);
 }
 
 /**

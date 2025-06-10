@@ -150,7 +150,7 @@ suite('AppRunner', () => {
     });
 
     suite('ProcessTracker output channel methods', () => {
-        test('should return true when output channel exists', () => {
+        test('should return true when output channel exists', async () => {
             // Create a mock output channel first
             const mockOutputChannel = {
                 show: sandbox.stub(),
@@ -158,6 +158,13 @@ suite('AppRunner', () => {
                 appendLine: sandbox.stub(),
                 dispose: sandbox.stub(),
                 clear: sinon.stub(),
+                // Add LogOutputChannel methods
+                trace: sinon.stub(),
+                debug: sinon.stub(),
+                info: sinon.stub(),
+                warn: sinon.stub(),
+                error: sinon.stub(),
+                logLevel: 1 // vscode.LogLevel.Info
             };
             sandbox.stub(vscode.window, 'createOutputChannel').returns(mockOutputChannel as any);
 
@@ -187,7 +194,7 @@ suite('AppRunner', () => {
             sandbox.stub(process, 'kill').returns(true as any);
 
             // Spawn a process to create the output channel
-            ProcessTracker.spawnAndTrack({
+            await ProcessTracker.spawnAndTrack({
                 code: 'TEST_HAS_OUTPUT',
                 command: 'echo "test"',
                 args: []
@@ -203,7 +210,7 @@ suite('AppRunner', () => {
             assert.strictEqual(ProcessTracker.hasOutputChannel('NONEXISTENT'), false);
         });
 
-        test('should return output channel when it exists', () => {
+        test('should return output channel when it exists', async () => {
             // Create a mock output channel first
             const mockOutputChannel = {
                 show: sandbox.stub(),
@@ -211,6 +218,13 @@ suite('AppRunner', () => {
                 appendLine: sandbox.stub(),
                 dispose: sandbox.stub(),
                 clear: sandbox.stub(),
+                // Add LogOutputChannel methods
+                trace: sinon.stub(),
+                debug: sinon.stub(),
+                info: sinon.stub(),
+                warn: sinon.stub(),
+                error: sinon.stub(),
+                logLevel: 1 // vscode.LogLevel.Info
             };
             sandbox.stub(vscode.window, 'createOutputChannel').returns(mockOutputChannel as any);
 
@@ -240,7 +254,7 @@ suite('AppRunner', () => {
             sandbox.stub(process, 'kill').returns(true as any);
 
             // Spawn a process to create the output channel
-            ProcessTracker.spawnAndTrack({
+            await ProcessTracker.spawnAndTrack({
                 code: 'TEST_GET_OUTPUT',
                 command: 'echo "test"',
                 args: []
@@ -250,7 +264,7 @@ suite('AppRunner', () => {
             assert.strictEqual(mockOutputChannel.clear.callCount, 0);
 
             // Spawn again with the same code to test reusing existing output channel
-            ProcessTracker.spawnAndTrack({
+            await ProcessTracker.spawnAndTrack({
                 code: 'TEST_GET_OUTPUT',
                 command: 'echo "test2"',
                 args: []

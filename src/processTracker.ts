@@ -5,6 +5,7 @@ import { spawn, ChildProcessWithoutNullStreams } from 'child_process';
 import * as vscode from 'vscode';
 import type { ProcessTerminationReason } from './types';
 import { workspaceHash } from './utils';
+import { getLogger } from './logger';
 
 /**
  * Manages process tracking using PID files in a user-specific directory.
@@ -191,9 +192,12 @@ export class ProcessTracker {
      * @param command Command to run
      * @param args Arguments for the command
      * @param options Spawn options
-     * @returns The spawned ChildProcess
+     * @returns Promise that resolves with the spawned ChildProcess when the process is ready
      */
-    static spawnAndTrack({ code, command, args = [], options = {} }: { code: string, command: string, args?: string[], options?: any }): ChildProcessWithoutNullStreams {
+    static async spawnAndTrack({ code, command, args = [], options = {} }: { code: string, command: string, args?: string[], options?: any }): Promise<ChildProcessWithoutNullStreams> {
+        const logger = getLogger();
+        logger.info(`Spawning and tracking process: ${code}`, { command, args });
+        
         this.ensurePidDir();
         // Clear any previous termination reason when starting a new process
         this.clearTerminationReason(code);
@@ -201,6 +205,7 @@ export class ProcessTracker {
         // Store the current workspace hash for this process
         const currentWorkspaceHash = workspaceHash();
         this.setWorkspaceHash(code, currentWorkspaceHash);
+        logger.debug(`Set workspace hash for ${code}`, { workspaceHash: currentWorkspaceHash });
         
         // Create or reuse output channel
         let outputChannel = this.outputChannels.get(code);
@@ -211,12 +216,14 @@ export class ProcessTracker {
             // specific features.
             outputChannel = vscode.window.createOutputChannel(`Run: ${code}`);            
             this.outputChannels.set(code, outputChannel);
+            logger.debug(`Created new output channel for ${code}`);
         } else {
             // Clear existing output channel contents when starting a new process (if setting is enabled)
             const config = vscode.workspace.getConfiguration('rubyToolkit');
             const clearOutputOnRun = config.get<boolean>('clearOutputChannelOnProcessRun', true);
             if (clearOutputOnRun) {
                 outputChannel.clear();
+                logger.debug(`Cleared existing output channel for ${code}`);
             }
         }
 
@@ -229,53 +236,115 @@ export class ProcessTracker {
         for (const v of forbiddenVars) {
             delete env[v];
         }
-        const shell = process.env.SHELL || 'zsh';
-        const child = spawn(shell, ['-c', `echo ${command}; ${command} ${args.join(' ')}`], {
-          env,
-          cwd: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
-        });
-        const pidFile = this.getPidFilePath(code);
-        fs.writeFileSync(pidFile, String(child.pid));
-        child.stdout?.on('data', (data: Buffer) => {
-            const processedData = this.preprocessOutputData(data.toString(), code);
-            outputChannel.append(processedData);
-        });
-        child.stderr?.on('data', (data: Buffer) => {
-            const processedData = this.preprocessOutputData(data.toString(), code);
-            outputChannel.append(processedData);
-        });
-        child.on('exit', (exitCode: number | null, signal: string | null) => {
-            if (fs.existsSync(pidFile)) {
-                fs.unlinkSync(pidFile);
-            }
+        
+        return new Promise((resolve, reject) => {
+            const shell = process.env.SHELL || 'zsh';
+            const child = spawn(shell, ['-c', `echo ${command}; ${command} ${args.join(' ')}`], {
+              env,
+              cwd: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
+            });
             
-            // Determine termination reason BEFORE clearing workspace hash
-            const currentReason = this.getTerminationReason(code);
-            if (currentReason === 'none') {
-                // Process exited without user intervention, mark as crashed
-                this.setTerminationReason(code, 'crashed');
-                
-                // Show the output channel to help user see what went wrong
-                const outputChannel = this.outputChannels.get(code);
-                if (outputChannel) {
-                    outputChannel.show(true);
-                    vscode.window.showErrorMessage(
-                        `Process "${code}" crashed unexpectedly. Check the output channel for details.`,
-                        'Show Output'
-                    ).then((selection) => {
-                        if (selection === 'Show Output') {
-                            outputChannel.show(true);
-                        }
-                    });
+            // Handle spawn errors
+            child.on('error', (error) => {
+                logger.error(`Failed to spawn process ${code}`, { error });
+                reject(error);
+                return;
+            });
+            
+            const pidFile = this.getPidFilePath(code);
+            
+            // Wait for the process to actually start before writing PID file and resolving
+            let hasStarted = false;
+            let startupTimer: NodeJS.Timeout;
+            
+            const markAsStarted = () => {
+                if (hasStarted) {
+                    return;
                 }
-            }
+                hasStarted = true;
+                
+                if (startupTimer) {
+                    clearTimeout(startupTimer);
+                }
+                
+                // Write PID file only after process has actually started
+                fs.writeFileSync(pidFile, String(child.pid));
+                logger.info(`Process spawned successfully: ${code}`, { 
+                    pid: child.pid, 
+                    pidFile,
+                    shell,
+                    cwd: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath 
+                });
+                
+                resolve(child);
+            };
             
-            // Clean up workspace hash after handling termination reason
-            this.clearWorkspaceHash(code);
+            // Consider the process started when it produces any output
+            const onData = () => {
+                markAsStarted();
+            };
             
-            outputChannel.appendLine(`\n[Process exited with code ${exitCode}${signal ? `, signal ${signal}` : ''}]`);
+            child.stdout?.once('data', onData);
+            child.stderr?.once('data', onData);
+            
+            // Fallback: consider started after a short delay even without output
+            startupTimer = setTimeout(() => {
+                markAsStarted();
+            }, 100);
+            
+            // Handle immediate exit (before startup)
+            child.on('exit', (exitCode: number | null, signal: string | null) => {
+                if (!hasStarted) {
+                    logger.error(`Process ${code} exited before startup`, { exitCode, signal, pid: child.pid });
+                    reject(new Error(`Process ${code} exited immediately with code ${exitCode}${signal ? `, signal ${signal}` : ''}`));
+                    return;
+                }
+                
+                logger.info(`Process ${code} exited`, { exitCode, signal, pid: child.pid });
+                
+                if (fs.existsSync(pidFile)) {
+                    fs.unlinkSync(pidFile);
+                    logger.debug(`Removed PID file for ${code}`, { pidFile });
+                }
+                
+                // Determine termination reason BEFORE clearing workspace hash
+                const currentReason = this.getTerminationReason(code);
+                if (currentReason === 'none') {
+                    // Process exited without user intervention, mark as crashed
+                    logger.warn(`Process ${code} crashed unexpectedly`, { exitCode, signal });
+                    this.setTerminationReason(code, 'crashed');
+                    
+                    // Show the output channel to help user see what went wrong
+                    const outputChannel = this.outputChannels.get(code);
+                    if (outputChannel) {
+                        outputChannel.show(true);
+                        vscode.window.showErrorMessage(
+                            `Process "${code}" crashed unexpectedly. Check the output channel for details.`,
+                            'Show Output'
+                        ).then((selection) => {
+                            if (selection === 'Show Output') {
+                                outputChannel.show(true);
+                            }
+                        });
+                    }
+                }
+                
+                // Clean up workspace hash after handling termination reason
+                this.clearWorkspaceHash(code);
+                
+                outputChannel.appendLine(`\n[Process exited with code ${exitCode}${signal ? `, signal ${signal}` : ''}]`);
+            });
+            
+            // Set up output handling after startup detection
+            child.stdout?.on('data', (data: Buffer) => {
+                const processedData = this.preprocessOutputData(data.toString(), code);
+                outputChannel.append(processedData);
+            });
+            child.stderr?.on('data', (data: Buffer) => {
+                const processedData = this.preprocessOutputData(data.toString(), code);
+                outputChannel.append(processedData);
+            });
         });
-        return child;
     }
 
     /**
@@ -317,56 +386,65 @@ export class ProcessTracker {
     }
 
     /**
-     * Polls a process to ensure it has stopped, with timeout and force kill fallback.
+     * Waits for a process to stop, with timeout and force kill fallback.
      * This function can be mocked in tests for predictable behavior.
      * @param pid Process ID to poll
      * @param code Command code for logging/cleanup
      * @param pidFile Path to the PID file for cleanup
      * @param timeout Timeout in milliseconds (default: 30 seconds)
+     * @returns Promise that resolves when the process has stopped
      * @private
      */
-    private static pollForProcessStop(pid: number, code: string, pidFile: string, timeout: number = 30000): void {
+    private static waitForProcessStop(pid: number, code: string, pidFile: string, timeout: number = 30000): Promise<void> {
         const startTime = Date.now();
         const maxRetries = Math.ceil(timeout / 50); // 50ms polling interval
         let retryCount = 0;
+        const logger = getLogger();
 
-        const pollProcess = () => {
-            try {
-                // Check if process is still running
-                process.kill(pid, 0);
-                
-                retryCount++;
-                
-                // Check timeout or max retries
-                if (Date.now() - startTime > timeout || retryCount >= maxRetries) {
-                    // Timeout reached, force kill the process
-                    try {
-                        process.kill(pid, 'SIGKILL');
-                        console.warn(`Process ${pid} (${code}) did not stop gracefully within ${timeout/1000} seconds, forcefully killed`);
-                    } catch {
-                        // Process might have died between checks
+        return new Promise<void>((resolve) => {
+            const pollProcess = () => {
+                try {
+                    // Check if process is still running
+                    process.kill(pid, 0);
+                    
+                    retryCount++;
+                    
+                    // Check timeout or max retries
+                    if (Date.now() - startTime > timeout || retryCount >= maxRetries) {
+                        // Timeout reached, force kill the process
+                        try {
+                            process.kill(pid, 'SIGKILL');
+                            logger.warn(`Forcefully killed process ${code} with PID ${pid} after timeout`);
+                            console.warn(`Process ${pid} (${code}) did not stop gracefully within ${timeout/1000} seconds, forcefully killed`);
+                        } catch {
+                            // Process might have died between checks
+                        }
+                        // Clean up and resolve
+                        if (fs.existsSync(pidFile)) {
+                            fs.unlinkSync(pidFile);
+                        }
+                        this.clearWorkspaceHash(code);
+                        resolve();
+                        return;
                     }
-                    // Clean up and return
+                    
+                    // Process still running, continue polling after a short delay
+                    setTimeout(pollProcess, 50);
+                    logger.debug(`Polling process ${code} with PID ${pid}, retry count: ${retryCount}`);
+                } catch {
+                    // Process has stopped (process.kill(pid, 0) threw an error)
                     if (fs.existsSync(pidFile)) {
                         fs.unlinkSync(pidFile);
                     }
                     this.clearWorkspaceHash(code);
-                    return;
+                    logger.info(`Process ${code} with PID ${pid} has stopped gracefully`);
+                    resolve();
                 }
-                
-                // Process still running, continue polling after a short delay
-                setTimeout(pollProcess, 50);
-            } catch {
-                // Process has stopped (process.kill(pid, 0) threw an error)
-                if (fs.existsSync(pidFile)) {
-                    fs.unlinkSync(pidFile);
-                }
-                this.clearWorkspaceHash(code);
-            }
-        };
+            };
 
-        // Start polling after a short delay to give the process time to react to SIGTERM
-        setTimeout(pollProcess, 50);
+            // Start polling after a short delay to give the process time to react to SIGTERM
+            setTimeout(pollProcess, 50);
+        });
     }
 
     /**
@@ -374,21 +452,31 @@ export class ProcessTracker {
      * Polls the process to ensure it has stopped within 30 seconds.
      * If the process doesn't stop gracefully, it will be forcefully killed.
      * @param code Command code
+     * @returns Promise that resolves when the process has fully stopped
      */
-    static stopProcess(code: string): void {
+    static async stopProcess(code: string): Promise<void> {
+        const logger = getLogger();
         const pidFile = this.getPidFilePath(code);
-        if (!fs.existsSync(pidFile)) {return;}
+        
+        if (!fs.existsSync(pidFile)) {
+            logger.debug(`No PID file found for ${code}, process not running`);
+            return;
+        }
         
         // Mark as user-requested termination before killing the process
         this.setTerminationReason(code, 'user-requested');
+        logger.debug(`Set termination reason to 'user-requested' for ${code}`);
         
         const pid = parseInt(fs.readFileSync(pidFile, 'utf8'));
+        logger.info(`Stopping process ${code}`, { pid });
         
         // First attempt: graceful termination with SIGTERM
         try {
             process.kill(pid, 'SIGTERM');
-        } catch {
+            logger.debug(`Sent SIGTERM to process ${code}`, { pid });
+        } catch (error) {
             // Process might already be dead
+            logger.debug(`Failed to send SIGTERM to process ${code}`, { pid, error });
             if (fs.existsSync(pidFile)) {
                 fs.unlinkSync(pidFile);
             }
@@ -396,8 +484,8 @@ export class ProcessTracker {
             return;
         }
 
-        // Poll the process to ensure it has stopped
-        this.pollForProcessStop(pid, code, pidFile);
+        // Wait for the process to actually stop
+        await ProcessTracker.waitForProcessStop(pid, code, pidFile);
     }
 
     /**

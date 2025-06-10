@@ -1,9 +1,10 @@
 import * as vscode from 'vscode';
-import { runCommand, stopCommand, debugCommand, loadAppConfig, stopAllCommands, runAndDebugCommand, appCommandsFileExists, getDefaultAppConfig } from './appCommand';
+import { runCommand, stopCommand, debugCommand, loadAppConfig, stopAllCommands, runAndDebugCommand, appCommandsFileExists, getDefaultAppConfig, setOnLockAcquiredCallback } from './appCommand';
 import { ProcessTracker } from './processTracker';
 import { CommandStateManager } from './commandStateManager';
 import type { Commands, Command, ProcessState } from './types';
 import { workspaceHash } from './utils';
+import { getLogger } from './logger';
 
 /**
  * Represents a single command in the App Runner TreeView, with state-based icon, label, tooltip, and context value.
@@ -107,11 +108,23 @@ export class AppRunnerTreeDataProvider implements vscode.TreeDataProvider<AppCom
     private _onDidChangeTreeData: vscode.EventEmitter<AppCommandTreeItem | null | undefined> = new vscode.EventEmitter<AppCommandTreeItem | null | undefined>();
     readonly onDidChangeTreeData: vscode.Event<AppCommandTreeItem | null | undefined> = this._onDidChangeTreeData.event;
     private commands: Command[] = [];
-    private stateMap: Record<string, ProcessState> = {};
     private stateManager?: CommandStateManager;
+    private logger = getLogger();
 
     constructor() {
+        this.logger.info('Creating AppRunnerTreeDataProvider');
         this.refresh();
+    }
+
+    public state(commandCode: string): ProcessState {
+        return this.stateManager?.getButtonState(commandCode) || { 
+            exists: false, 
+            debugActive: false, 
+            terminationReason: 'none', 
+            hasOutputChannel: false, 
+            isLocked: true, 
+            workspaceHash: undefined 
+        };
     }
 
     /**
@@ -119,31 +132,33 @@ export class AppRunnerTreeDataProvider implements vscode.TreeDataProvider<AppCom
      * Called internally and can be triggered by commands or events.
      */
     async refresh(): Promise<void> {
+        this.logger.debug('Refreshing AppRunnerTreeDataProvider');
         const config = loadAppConfig();
         this.commands = config.commands;
+        this.logger.debug('Loaded app config', { commandCount: this.commands.length });
+        
         // Always re-instantiate CommandStateManager to avoid private member access
         if (this.stateManager) {
             this.stateManager.dispose();
         }
         this.stateManager = new CommandStateManager({
-            onUpdate: () => this._onDidChangeTreeData.fire(null)
+            onUpdate: () => {
+                this.logger.debug('CommandStateManager triggered tree view update');
+                this._onDidChangeTreeData.fire(null);
+            }
         }, this.commands);
-        // Update stateMap on every update
-        const updateStateMap = () => {
-            this.stateMap = {};
-            this.commands.forEach(cmd => {
-                this.stateMap[cmd.code] = this.stateManager!.getButtonState(cmd.code);
-            });
-        };
-        updateStateMap();
-        // Patch onUpdate to also update stateMap
-        const origOnUpdate = this.stateManager["onUpdate"];
-        this.stateManager["onUpdate"] = () => {
-            updateStateMap();
-            origOnUpdate();
-        };
-        // Force an initial poll to update state
-        await this.stateManager["pollSessionStates"]();
+        
+        this.logger.debug('AppRunnerTreeDataProvider refresh complete');
+    }
+
+    /**
+     * Forces an immediate state update to reflect changes like lock acquisition.
+     * Useful for showing loading spinners immediately when operations start.
+     */
+    async forceUpdate(): Promise<void> {
+        if (this.stateManager) {
+            await this.stateManager.forceUpdate();
+        }
     }
 
     /**
@@ -167,7 +182,7 @@ export class AppRunnerTreeDataProvider implements vscode.TreeDataProvider<AppCom
         if (!element) {
             // Only show each command as a tree item (no Run All/Stop All)
             const items: AppCommandTreeItem[] = this.commands.map(cmd => {
-                return new AppCommandTreeItem(cmd, this.stateMap[cmd.code]);
+                return new AppCommandTreeItem(cmd, this.stateManager?.getButtonState(cmd.code));
             });
             return Promise.resolve(items);
         }
@@ -180,15 +195,33 @@ export class AppRunnerTreeDataProvider implements vscode.TreeDataProvider<AppCom
  * @param context The extension context for registering disposables.
  */
 export function registerAppRunnerTreeView(context: vscode.ExtensionContext) {
+    const logger = getLogger();
+    logger.info('Registering AppRunner TreeView and commands');
+    
     const provider = new AppRunnerTreeDataProvider();
     const treeView = vscode.window.createTreeView('appRunnerTreeView', { treeDataProvider: provider });
     context.subscriptions.push(treeView);
+    logger.debug('AppRunner TreeView created and registered');
+
+    // Set up callback for immediate tree view updates when locks are acquired
+    setOnLockAcquiredCallback(async () => {
+        logger.debug('Lock acquired callback triggered');
+        await provider.refresh();
+        await new Promise(resolve => setTimeout(resolve, 500));
+    });
 
     // Refresh on debug session start/stop to update button states
-    context.subscriptions.push(vscode.debug.onDidStartDebugSession(() => provider.refresh()));
-    context.subscriptions.push(vscode.debug.onDidTerminateDebugSession(() => provider.refresh()));
+    context.subscriptions.push(vscode.debug.onDidStartDebugSession(() => {
+        logger.debug('Debug session started, refreshing tree view');
+        provider.refresh();
+    }));
+    context.subscriptions.push(vscode.debug.onDidTerminateDebugSession(() => {
+        logger.debug('Debug session terminated, refreshing tree view');
+        provider.refresh();
+    }));
 
     context.subscriptions.push(vscode.commands.registerCommand('appRunner.refresh', async () => {
+        logger.info('Refresh command executed');
         // Always refresh - loadAppConfig() returns default commands if file doesn't exist
         await provider.refresh();
     }));
@@ -345,13 +378,7 @@ export function registerAppRunnerTreeView(context: vscode.ExtensionContext) {
         const actions: vscode.QuickPickItem[] = [];
         
         // Get the exact same state used for button display from the provider
-        const state = provider['stateMap'][cmd.code] || { 
-            exists: false, 
-            debugActive: false, 
-            terminationReason: 'none', 
-            hasOutputChannel: false,
-            workspaceHash: undefined
-        };
+        const state = provider.state(cmd.code);
         
         // Check if process is from different workspace
         const currentWorkspace = workspaceHash();

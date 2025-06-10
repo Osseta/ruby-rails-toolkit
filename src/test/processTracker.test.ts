@@ -31,6 +31,13 @@ suite('ProcessTracker', () => {
             appendLine: sinon.stub(),
             dispose: sinon.stub(),
             clear: sinon.stub(),
+            // Add LogOutputChannel methods
+            trace: sinon.stub(),
+            debug: sinon.stub(),
+            info: sinon.stub(),
+            warn: sinon.stub(),
+            error: sinon.stub(),
+            logLevel: 1 // vscode.LogLevel.Info
         };
         if (!vscode.window.createOutputChannel) {
             (vscode.window as any).createOutputChannel = () => mockOutputChannel;
@@ -74,14 +81,15 @@ suite('ProcessTracker', () => {
         // Mock process.kill to avoid killing actual processes
         sinon.stub(process, 'kill').returns(true as any);
         
-        // Mock pollForProcessStop to complete synchronously in tests
-        sinon.stub(ProcessTracker as any, 'pollForProcessStop').callsFake((...args: any[]) => {
+        // Mock waitForProcessStop to complete synchronously in tests and perform cleanup
+        sinon.stub(ProcessTracker as any, 'waitForProcessStop').callsFake((...args: any[]) => {
             const [pid, code, pidFile] = args;
-            // Simulate immediate cleanup for test environment
+            // Simulate the cleanup that the real method would do
             if (fs.existsSync(pidFile)) {
                 fs.unlinkSync(pidFile);
             }
-            ProcessTracker.clearWorkspaceHash(code);
+            (ProcessTracker as any).clearWorkspaceHash(code);
+            return Promise.resolve();
         });
     });
 
@@ -90,34 +98,40 @@ suite('ProcessTracker', () => {
         sinon.restore();
     });
 
-    test('spawnAndTrack creates a pid file and isRunning returns true', function(done) {
-        const child = ProcessTracker.spawnAndTrack({
+    test('spawnAndTrack creates a pid file and isRunning returns true', async function() {
+        const child = await ProcessTracker.spawnAndTrack({
             code,
             command: 'sleep',
             args: ['2'],
             options: { stdio: 'ignore' }
         });
-        setTimeout(() => {
-            assert.ok(fs.existsSync(pidFile));
-            assert.ok(ProcessTracker.isRunning(code));
-            child.kill();
-            done();
-        }, 200);
+        
+        // Process should be ready now
+        assert.ok(fs.existsSync(pidFile));
+        assert.ok(ProcessTracker.isRunning(code));
+        child.kill();
+        
+        // Wait a bit for cleanup
+        await new Promise(resolve => setTimeout(resolve, 100));
     });
 
-    test('stopProcess kills process and removes pid file', function(done) {
-        const child = ProcessTracker.spawnAndTrack({
+    test('stopProcess kills process and removes pid file', async function() {
+        const child = await ProcessTracker.spawnAndTrack({
             code,
             command: 'sleep',
             args: ['2'],
             options: { stdio: 'ignore' }
         });
-        setTimeout(() => {
-            ProcessTracker.stopProcess(code);
-            assert.ok(!ProcessTracker.isRunning(code));
-            assert.ok(!fs.existsSync(pidFile));
-            done();
-        }, 200);
+        
+        // Process should be ready now
+        assert.ok(fs.existsSync(pidFile));
+        assert.ok(ProcessTracker.isRunning(code));
+        
+        await ProcessTracker.stopProcess(code);
+        
+        // Process should be stopped now (no need to wait)
+        assert.ok(!fs.existsSync(pidFile));
+        assert.ok(!ProcessTracker.isRunning(code));
     });
 
     test('isRunning returns false if no pid file', () => {
@@ -696,7 +710,7 @@ Processing file:///mock/workspace/src/component.tsx:50`;
             sandbox.restore();
         });
 
-        test('should clear output channel when configuration is true (default)', () => {
+        test('should clear output channel when configuration is true (default)', async () => {
             // Mock configuration to return true (default)
             const configMock = {
                 get: sandbox.stub().withArgs('clearOutputChannelOnProcessRun', true).returns(true)
@@ -714,7 +728,7 @@ Processing file:///mock/workspace/src/component.tsx:50`;
             (ProcessTracker as any).outputChannels.set(code, mockOutputChannel);
 
             // Spawn and track a process (this should reuse the existing output channel)
-            ProcessTracker.spawnAndTrack({
+            await ProcessTracker.spawnAndTrack({
                 code,
                 command: 'echo',
                 args: ['test'],
@@ -730,7 +744,7 @@ Processing file:///mock/workspace/src/component.tsx:50`;
             assert.strictEqual(mockOutputChannel.clear.callCount, 1);
         });
 
-        test('should not clear output channel when configuration is false', () => {
+        test('should not clear output channel when configuration is false', async () => {
             // Mock configuration to return false
             const configMock = {
                 get: sandbox.stub().withArgs('clearOutputChannelOnProcessRun', true).returns(false)
@@ -748,7 +762,7 @@ Processing file:///mock/workspace/src/component.tsx:50`;
             (ProcessTracker as any).outputChannels.set(code, mockOutputChannel);
 
             // Spawn and track a process (this should reuse the existing output channel)
-            ProcessTracker.spawnAndTrack({
+            await ProcessTracker.spawnAndTrack({
                 code,
                 command: 'echo',
                 args: ['test'],
@@ -764,7 +778,7 @@ Processing file:///mock/workspace/src/component.tsx:50`;
             assert.strictEqual(mockOutputChannel.clear.callCount, 0);
         });
 
-        test('should create new output channel without clearing when it does not exist', () => {
+        test('should create new output channel without clearing when it does not exist', async () => {
             // Mock configuration (should not matter since it's a new channel)
             const configMock = {
                 get: sandbox.stub().withArgs('clearOutputChannelOnProcessRun', true).returns(true)
@@ -781,11 +795,18 @@ Processing file:///mock/workspace/src/component.tsx:50`;
                 appendLine: sandbox.stub(),
                 dispose: sandbox.stub(),
                 clear: sandbox.stub(),
+                // Add LogOutputChannel methods
+                trace: sinon.stub(),
+                debug: sinon.stub(),
+                info: sinon.stub(),
+                warn: sinon.stub(),
+                error: sinon.stub(),
+                logLevel: 1 // vscode.LogLevel.Info
             };
             (vscode.window.createOutputChannel as any).returns(mockOutputChannel);
 
             // Spawn and track a process (this should create a new output channel)
-            ProcessTracker.spawnAndTrack({
+            await ProcessTracker.spawnAndTrack({
                 code,
                 command: 'echo',
                 args: ['test'],

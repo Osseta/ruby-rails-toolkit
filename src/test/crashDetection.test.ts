@@ -35,6 +35,13 @@ suite('Process Crash Detection', () => {
             appendLine: sandbox.stub(),
             dispose: sandbox.stub(),
             clear: sinon.stub(),
+            // Add LogOutputChannel methods
+            trace: sinon.stub(),
+            debug: sinon.stub(),
+            info: sinon.stub(),
+            warn: sinon.stub(),
+            error: sinon.stub(),
+            logLevel: 1 // vscode.LogLevel.Info
         };
         
         // Ensure vscode.window exists
@@ -208,6 +215,17 @@ suite('Process Crash Detection', () => {
 
         // Spy on ProcessTracker.stopProcess to see if it's being called
         sandbox.spy(ProcessTracker, 'stopProcess');
+        
+        // Mock waitForProcessStop to complete synchronously in tests and perform cleanup
+        sandbox.stub(ProcessTracker as any, 'waitForProcessStop').callsFake((...args: any[]) => {
+            const [pid, code, pidFile] = args;
+            // Simulate the cleanup that the real method would do
+            if (fs.existsSync(pidFile)) {
+                fs.unlinkSync(pidFile);
+            }
+            (ProcessTracker as any).clearWorkspaceHash(code);
+            return Promise.resolve();
+        });
     });
 
     teardown(() => {
@@ -225,7 +243,7 @@ suite('Process Crash Detection', () => {
         const code = 'TEST_CRASH';
         
         // Spawn a process that will crash (simulate by triggering exit event)
-        const child = ProcessTracker.spawnAndTrack({
+        const child = await ProcessTracker.spawnAndTrack({
             code,
             command: 'echo "test"',
             args: []
@@ -259,14 +277,14 @@ suite('Process Crash Detection', () => {
         const code = 'TEST_USER_STOP';
         
         // Spawn a process
-        const child = ProcessTracker.spawnAndTrack({
+        const child = await ProcessTracker.spawnAndTrack({
             code,
             command: 'echo "test"',
             args: []
         });
 
         // Simulate user stopping the process
-        ProcessTracker.stopProcess(code);
+        await ProcessTracker.stopProcess(code);
         
         // Simulate process exit after user stop
         child.emit('exit', 0, 'SIGTERM');
@@ -281,23 +299,23 @@ suite('Process Crash Detection', () => {
         assert(showErrorMessageStub.notCalled, 'Error message should not be displayed for user termination');
     });
 
-    test('should reuse output channel for same process code', () => {
+    test('should reuse output channel for same process code', async () => {
         const code = 'TEST_REUSE';
         
         // Spawn process twice with same code
-        ProcessTracker.spawnAndTrack({ code, command: 'echo "test1"', args: [] });
-        ProcessTracker.spawnAndTrack({ code, command: 'echo "test2"', args: [] });
+        await ProcessTracker.spawnAndTrack({ code, command: 'echo "test1"', args: [] });
+        await ProcessTracker.spawnAndTrack({ code, command: 'echo "test2"', args: [] });
 
         // Verify createOutputChannel was called only once
         assert.strictEqual(createOutputChannelStub.callCount, 1, 
                           'Output channel should be reused for same process code');
     });
 
-    test('should dispose output channel when requested', () => {
+    test('should dispose output channel when requested', async () => {
         const code = 'TEST_DISPOSE';
         
         // Spawn a process
-        ProcessTracker.spawnAndTrack({ code, command: 'echo "test"', args: [] });
+        await ProcessTracker.spawnAndTrack({ code, command: 'echo "test"', args: [] });
         
         // Dispose the output channel
         ProcessTracker.disposeOutputChannel(code);
@@ -306,13 +324,13 @@ suite('Process Crash Detection', () => {
         assert(outputChannelStub.dispose.calledOnce, 'Output channel should be disposed');
     });
 
-    test('should dispose all output channels when requested', () => {
+    test('should dispose all output channels when requested', async () => {
         const codes = ['TEST_DISPOSE_ALL_1', 'TEST_DISPOSE_ALL_2'];
         
         // Spawn multiple processes
-        codes.forEach(code => {
-            ProcessTracker.spawnAndTrack({ code, command: 'echo "test"', args: [] });
-        });
+        for (const code of codes) {
+            await ProcessTracker.spawnAndTrack({ code, command: 'echo "test"', args: [] });
+        }
         
         // Dispose all output channels
         ProcessTracker.disposeAllOutputChannels();
@@ -329,9 +347,11 @@ suite('Process Crash Detection', () => {
         
         // Spawn multiple processes
         const codes = ['TEST_STOP_ALL_1', 'TEST_STOP_ALL_2'];
-        const children = codes.map(code => 
-            ProcessTracker.spawnAndTrack({ code, command: 'sleep 10', args: [] })
-        );
+        const children = [];
+        for (const code of codes) {
+            const child = await ProcessTracker.spawnAndTrack({ code, command: 'sleep 10', args: [] });
+            children.push(child);
+        }
 
         // Verify processes are running
         codes.forEach(code => {
