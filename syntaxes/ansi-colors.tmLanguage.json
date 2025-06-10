@@ -28,6 +28,18 @@
       }
     },
     {
+      "name": "rails.processing.controller.action.line",
+      "match": "^(Processing\\s+by\\s+)([^#]+)(#)([^\\s]+)(\\s+as\\s+\\w+.*)$",
+      "captures": {
+        "0": { "name": "meta.line.processing.rails" },
+        "1": { "name": "keyword.other.processing.rails" },
+        "2": { "name": "string.value" },
+        "3": { "name": "punctuation.definition.quote.begin.markdown" },
+        "4": { "name": "punctuation.definition.quote.begin.markdown" },
+        "5": { "name": "keyword.other.processing.rails" }
+      }
+    },
+    {
       "name": "ansi.complete.bold.cyan",
       "match": "(\\[1m\\[36m)([^\\[]*?)(\\[0m)",
       "captures": {
