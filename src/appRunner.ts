@@ -39,7 +39,13 @@ export class AppCommandTreeItem extends vscode.TreeItem {
         
         // Set icon based on locked state first, then running state and termination reason
         if (safeState.isLocked) {
-            this.iconPath = new (vscode as any).ThemeIcon('loading~spin');
+            if (safeState.exists) {
+                // use orange colour as waiting to stop or debug
+                this.iconPath = new (vscode as any).ThemeIcon('loading~spin', new vscode.ThemeColor('appRunner.differentWorkspace.foreground'));
+            } else {
+                // use green as waiting to run
+                this.iconPath = new (vscode as any).ThemeIcon('loading~spin', new vscode.ThemeColor('appRunner.runningCommand.foreground'));
+            }
         } else if (safeState.exists) {
             if (isDifferentWorkspace) {
                 // Orange icon for processes from different workspace
