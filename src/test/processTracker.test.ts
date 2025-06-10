@@ -73,6 +73,16 @@ suite('ProcessTracker', () => {
         
         // Mock process.kill to avoid killing actual processes
         sinon.stub(process, 'kill').returns(true as any);
+        
+        // Mock pollForProcessStop to complete synchronously in tests
+        sinon.stub(ProcessTracker as any, 'pollForProcessStop').callsFake((...args: any[]) => {
+            const [pid, code, pidFile] = args;
+            // Simulate immediate cleanup for test environment
+            if (fs.existsSync(pidFile)) {
+                fs.unlinkSync(pidFile);
+            }
+            ProcessTracker.clearWorkspaceHash(code);
+        });
     });
 
     teardown(() => {

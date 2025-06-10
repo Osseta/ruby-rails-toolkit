@@ -317,7 +317,62 @@ export class ProcessTracker {
     }
 
     /**
+     * Polls a process to ensure it has stopped, with timeout and force kill fallback.
+     * This function can be mocked in tests for predictable behavior.
+     * @param pid Process ID to poll
+     * @param code Command code for logging/cleanup
+     * @param pidFile Path to the PID file for cleanup
+     * @param timeout Timeout in milliseconds (default: 30 seconds)
+     * @private
+     */
+    private static pollForProcessStop(pid: number, code: string, pidFile: string, timeout: number = 30000): void {
+        const startTime = Date.now();
+        const maxRetries = Math.ceil(timeout / 50); // 50ms polling interval
+        let retryCount = 0;
+
+        const pollProcess = () => {
+            try {
+                // Check if process is still running
+                process.kill(pid, 0);
+                
+                retryCount++;
+                
+                // Check timeout or max retries
+                if (Date.now() - startTime > timeout || retryCount >= maxRetries) {
+                    // Timeout reached, force kill the process
+                    try {
+                        process.kill(pid, 'SIGKILL');
+                        console.warn(`Process ${pid} (${code}) did not stop gracefully within ${timeout/1000} seconds, forcefully killed`);
+                    } catch {
+                        // Process might have died between checks
+                    }
+                    // Clean up and return
+                    if (fs.existsSync(pidFile)) {
+                        fs.unlinkSync(pidFile);
+                    }
+                    this.clearWorkspaceHash(code);
+                    return;
+                }
+                
+                // Process still running, continue polling after a short delay
+                setTimeout(pollProcess, 50);
+            } catch {
+                // Process has stopped (process.kill(pid, 0) threw an error)
+                if (fs.existsSync(pidFile)) {
+                    fs.unlinkSync(pidFile);
+                }
+                this.clearWorkspaceHash(code);
+            }
+        };
+
+        // Start polling after a short delay to give the process time to react to SIGTERM
+        setTimeout(pollProcess, 50);
+    }
+
+    /**
      * Stops the process for the given code, if running.
+     * Polls the process to ensure it has stopped within 30 seconds.
+     * If the process doesn't stop gracefully, it will be forcefully killed.
      * @param code Command code
      */
     static stopProcess(code: string): void {
@@ -328,13 +383,21 @@ export class ProcessTracker {
         this.setTerminationReason(code, 'user-requested');
         
         const pid = parseInt(fs.readFileSync(pidFile, 'utf8'));
+        
+        // First attempt: graceful termination with SIGTERM
         try {
             process.kill(pid, 'SIGTERM');
-        } catch {}
-        fs.unlinkSync(pidFile);
-        
-        // Clean up workspace hash
-        this.clearWorkspaceHash(code);
+        } catch {
+            // Process might already be dead
+            if (fs.existsSync(pidFile)) {
+                fs.unlinkSync(pidFile);
+            }
+            this.clearWorkspaceHash(code);
+            return;
+        }
+
+        // Poll the process to ensure it has stopped
+        this.pollForProcessStop(pid, code, pidFile);
     }
 
     /**
