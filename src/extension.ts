@@ -4,19 +4,20 @@ import { AppRunnerTreeDataProvider, registerAppRunnerTreeView } from './appRunne
 import { FileLockManager } from './fileLockManager';
 import { ProcessTracker } from './processTracker';
 import { getLogger, LogLevel } from './logger';
+import { ExtensionVscodeWrapper, defaultExtensionVscodeWrapper } from './extensionVscodeWrapper';
 
 /**
  * Applies global configuration for output channels to hide control characters
  * This ensures RSpec/Rails output channels don't show red escape character icons
  */
-function applyOutputChannelConfiguration() {
-    const config = vscode.workspace.getConfiguration('rubyToolkit');
+function applyOutputChannelConfiguration(vscodeWrapper: ExtensionVscodeWrapper = defaultExtensionVscodeWrapper) {
+    const config = vscodeWrapper.getConfiguration('rubyToolkit');
     const hideAnsiPunctuation = config.get<boolean>('hideAnsiPunctuation', true);
-    const editorConfig = vscode.workspace.getConfiguration("", { languageId: "Log" });
-    editorConfig.update("editor.renderControlCharacters", !hideAnsiPunctuation,  vscode.ConfigurationTarget.Global, true);
+    const editorConfig = vscodeWrapper.getConfiguration("", { languageId: "Log" });
+    editorConfig.update("editor.renderControlCharacters", !hideAnsiPunctuation, vscodeWrapper.ConfigurationTarget.Global, true);
 }
 
-export function activate(context: import('vscode').ExtensionContext) {
+export function activate(context: import('vscode').ExtensionContext, vscodeWrapper: ExtensionVscodeWrapper = defaultExtensionVscodeWrapper) {
     // Initialize logger
     const logger = getLogger();
     logger.info('Activating Ruby & Rails Toolkit extension');
@@ -25,20 +26,39 @@ export function activate(context: import('vscode').ExtensionContext) {
     ProcessTracker.initialize(context);
     logger.debug('ProcessTracker initialized');
     
-    activateRspecRunner(context);
-    logger.debug('RSpec Runner activated');
+    // Check if RSpec integration is disabled
+    const config = vscodeWrapper.getConfiguration('rubyToolkit');
+    const disableRspecIntegration = config.get<boolean>('disableRspecIntegration', true);
+
+    if (!disableRspecIntegration) {
+        activateRspecRunner(context);
+        logger.debug('RSpec Runner activated');
+    } else {
+        logger.debug('RSpec integration disabled by configuration');
+    }
     
     registerAppRunnerTreeView(context);
     logger.debug('App Runner TreeView registered');
     
-    applyOutputChannelConfiguration();
+    applyOutputChannelConfiguration(vscodeWrapper);
     logger.debug('Output channel configuration applied');
     
     // Watch for configuration changes
-    const configWatcher = vscode.workspace.onDidChangeConfiguration(event => {
+    const configWatcher = vscodeWrapper.onDidChangeConfiguration(event => {
         if (event.affectsConfiguration('rubyToolkit.hideAnsiPunctuation')) {
-            applyOutputChannelConfiguration();
+            applyOutputChannelConfiguration(vscodeWrapper);
             logger.debug('Output channel configuration updated');
+        }
+        
+        if (event.affectsConfiguration('rubyToolkit.disableRspecIntegration')) {
+            vscodeWrapper.showInformationMessage(
+                'RSpec integration setting changed. Please reload the window for changes to take effect.',
+                'Reload Window'
+            ).then(selection => {
+                if (selection === 'Reload Window') {
+                    vscodeWrapper.executeCommand('workbench.action.reloadWindow');
+                }
+            });
         }
     });
     

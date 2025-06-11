@@ -69,6 +69,11 @@
           "type": "boolean",
           "default": true,
           "description": "Hide ANSI escape code punctuation by making it the same color as the background"
+        },
+        "rubyToolkit.disableRspecIntegration": {
+          "type": "boolean",
+          "default": true,
+          "description": "Disable RSpec integration (CodeLens and debugging features)"
         }
       }
     },
