@@ -267,7 +267,7 @@ export function registerAppRunnerTreeView(context: vscode.ExtensionContext) {
         const config = loadAppConfig();
         for (const cmd of config.commands) {
             if (!ProcessTracker.isRunning(cmd.code)) {
-                await runCommand(cmd);
+                runCommand(cmd);
             }
         }
         await provider.refresh();
