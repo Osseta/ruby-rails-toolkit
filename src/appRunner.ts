@@ -6,6 +6,17 @@ import type { Commands, Command, ProcessState } from './types';
 import { workspaceHash } from './utils';
 import { getLogger } from './logger';
 
+// Global reference to the CommandStateManager for debug session checking
+let globalCommandStateManager: CommandStateManager | undefined;
+
+/**
+ * Gets the global CommandStateManager instance.
+ * @returns The CommandStateManager instance or undefined if not initialized
+ */
+export function getGlobalCommandStateManager(): CommandStateManager | undefined {
+    return globalCommandStateManager;
+}
+
 /**
  * Represents a single command in the App Runner TreeView, with state-based icon, label, tooltip, and context value.
  */
@@ -30,11 +41,12 @@ export class AppCommandTreeItem extends vscode.TreeItem {
         // Add red styling for crashed commands
         if (isDifferentWorkspace) {
             this.description = '(DIFFERENT WORKSPACE)';
+        } else if (safeState.debugActive) {
+            // Use a blue description to indicate active debugging
+            this.description = '(DEBUGGING)';
         } else if (safeState.terminationReason === 'crashed') {
             // Use a prominent red description to make the crash status clear
             this.description = '(CRASHED)';
-            // Set resource URI for potential future styling
-            this.resourceUri = vscode.Uri.parse(`crashed-command:${cmd.code}`);
         }
         
         // Set icon based on locked state first, then running state and termination reason
@@ -50,6 +62,9 @@ export class AppCommandTreeItem extends vscode.TreeItem {
             if (isDifferentWorkspace) {
                 // Orange icon for processes from different workspace
                 this.iconPath = new (vscode as any).ThemeIcon('circle-large-filled', new vscode.ThemeColor('appRunner.differentWorkspace.foreground'));
+            } else if (safeState.debugActive) {
+                // Blue icon for processes with active debugging
+                this.iconPath = new (vscode as any).ThemeIcon('circle-large-filled', new vscode.ThemeColor('appRunner.debuggingActive.foreground'));
             } else {
                 // Green icon for processes from current workspace
                 this.iconPath = new (vscode as any).ThemeIcon('circle-large-filled', new vscode.ThemeColor('appRunner.runningCommand.foreground'));
@@ -114,7 +129,6 @@ export class AppRunnerTreeDataProvider implements vscode.TreeDataProvider<AppCom
     private _onDidChangeTreeData: vscode.EventEmitter<AppCommandTreeItem | null | undefined> = new vscode.EventEmitter<AppCommandTreeItem | null | undefined>();
     readonly onDidChangeTreeData: vscode.Event<AppCommandTreeItem | null | undefined> = this._onDidChangeTreeData.event;
     private commands: Command[] = [];
-    private stateManager?: CommandStateManager;
     private logger = getLogger();
 
     constructor() {
@@ -123,7 +137,7 @@ export class AppRunnerTreeDataProvider implements vscode.TreeDataProvider<AppCom
     }
 
     public state(commandCode: string): ProcessState {
-        return this.stateManager?.getButtonState(commandCode) || { 
+        return this.getStateManager()?.getButtonState(commandCode) || { 
             exists: false, 
             debugActive: false, 
             terminationReason: 'none', 
@@ -131,6 +145,14 @@ export class AppRunnerTreeDataProvider implements vscode.TreeDataProvider<AppCom
             isLocked: true, 
             workspaceHash: undefined 
         };
+    }
+
+    /**
+     * Gets the CommandStateManager instance.
+     * @returns The CommandStateManager instance
+     */
+    public getStateManager(): CommandStateManager | undefined {
+        return getGlobalCommandStateManager();
     }
 
     /**
@@ -142,18 +164,16 @@ export class AppRunnerTreeDataProvider implements vscode.TreeDataProvider<AppCom
         const config = loadAppConfig();
         this.commands = config.commands;
         this.logger.debug('Loaded app config', { commandCount: this.commands.length });
-        
-        // Always re-instantiate CommandStateManager to avoid private member access
-        if (this.stateManager) {
-            this.stateManager.dispose();
+
+        if (!this.getStateManager()) {
+          globalCommandStateManager = new CommandStateManager({
+              onUpdate: () => {
+                  this.logger.debug('CommandStateManager triggered tree view update');
+                  this._onDidChangeTreeData.fire(null);
+              }
+          }, this.commands);
         }
-        this.stateManager = new CommandStateManager({
-            onUpdate: () => {
-                this.logger.debug('CommandStateManager triggered tree view update');
-                this._onDidChangeTreeData.fire(null);
-            }
-        }, this.commands);
-        
+
         this.logger.debug('AppRunnerTreeDataProvider refresh complete');
     }
 
@@ -162,9 +182,7 @@ export class AppRunnerTreeDataProvider implements vscode.TreeDataProvider<AppCom
      * Useful for showing loading spinners immediately when operations start.
      */
     async forceUpdate(): Promise<void> {
-        if (this.stateManager) {
-            await this.stateManager.forceUpdate();
-        }
+      await this.getStateManager()?.forceUpdate();
     }
 
     /**
@@ -188,7 +206,7 @@ export class AppRunnerTreeDataProvider implements vscode.TreeDataProvider<AppCom
         if (!element) {
             // Only show each command as a tree item (no Run All/Stop All)
             const items: AppCommandTreeItem[] = this.commands.map(cmd => {
-                return new AppCommandTreeItem(cmd, this.stateManager?.getButtonState(cmd.code));
+                return new AppCommandTreeItem(cmd, this.getStateManager()?.getButtonState(cmd.code));
             });
             return Promise.resolve(items);
         }
@@ -217,12 +235,37 @@ export function registerAppRunnerTreeView(context: vscode.ExtensionContext) {
     });
 
     // Refresh on debug session start/stop to update button states
-    context.subscriptions.push(vscode.debug.onDidStartDebugSession(() => {
-        logger.debug('Debug session started, refreshing tree view');
+    context.subscriptions.push(vscode.debug.onDidStartDebugSession((session) => {
+        logger.debug('Debug session started, refreshing tree view', { sessionType: session.type, sessionName: session.name });
+        
+        // If this is an rdbg session, register it with the state manager
+        if (session.type === 'rdbg') {
+            // Extract command code from session name: "Attach to rdbg (commandCode)"
+            const match = session.name.match(/Attach to rdbg \(([^)]+)\)/);
+            if (match && match[1]) {
+                const commandCode = match[1];
+                const stateManager = provider.getStateManager();
+                if (stateManager) {
+                    stateManager.registerDebugSession(commandCode, session);
+                    logger.debug('Registered debug session with state manager', { commandCode, sessionId: session.id });
+                }
+            }
+        }
+        
         provider.refresh();
     }));
-    context.subscriptions.push(vscode.debug.onDidTerminateDebugSession(() => {
-        logger.debug('Debug session terminated, refreshing tree view');
+    context.subscriptions.push(vscode.debug.onDidTerminateDebugSession((session) => {
+        logger.debug('Debug session terminated, refreshing tree view', { sessionType: session.type, sessionName: session.name });
+        
+        // If this is an rdbg session, unregister it from the state manager
+        if (session.type === 'rdbg') {
+            const stateManager = provider.getStateManager();
+            if (stateManager) {
+                stateManager.unregisterDebugSession(session);
+                logger.debug('Unregistered debug session from state manager', { sessionId: session.id });
+            }
+        }
+        
         provider.refresh();
     }));
 

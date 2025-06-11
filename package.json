@@ -262,6 +262,15 @@
         }
       },
       {
+        "id": "appRunner.debuggingActive.foreground",
+        "description": "Foreground color for commands with active debugging",
+        "defaults": {
+          "dark": "#26b1f1",
+          "light": "#26b1f1",
+          "highContrast": "#1502be"
+        }
+      },
+      {
         "id": "ansi.punctuation.definition.foreground",
         "description": "Foreground color for ANSI escape code punctuation (set to background color to hide)",
         "defaults": {

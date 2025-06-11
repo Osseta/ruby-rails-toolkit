@@ -183,4 +183,205 @@ suite('CommandStateManager Tests', () => {
         // Assert: Verify clearInterval was called
         assert.ok(clearIntervalSpy.called, 'clearInterval should be called during dispose');
     });
+
+    suite('Debug Session Tracking Tests', () => {
+        test('should register debug session and update debugActive state', async () => {
+            // Setup: Create manager
+            manager = new CommandStateManager({ onUpdate: onUpdateCallback }, mockCommands);
+            
+            // Create mock debug session
+            const mockSession = {
+                id: 'test-session-1',
+                type: 'rdbg',
+                name: 'Attach to rdbg (TEST_CMD_1)',
+                workspaceFolder: undefined,
+                configuration: {
+                    type: 'rdbg',
+                    name: 'Attach to rdbg (TEST_CMD_1)',
+                    request: 'attach'
+                }
+            } as vscode.DebugSession;
+            
+            // Act: Register debug session
+            manager.registerDebugSession('TEST_CMD_1', mockSession);
+            
+            // Wait for polling to update
+            await new Promise(resolve => setTimeout(resolve, 10));
+            
+            // Assert: Verify debugActive state is true
+            const state = manager.getButtonState('TEST_CMD_1');
+            assert.strictEqual(state.debugActive, true, 'debugActive should be true after registering session');
+            
+            // Verify the session can be retrieved
+            const retrievedSession = manager.getDebugSession('TEST_CMD_1');
+            assert.strictEqual(retrievedSession?.id, 'test-session-1');
+        });
+
+        test('should unregister debug session and update debugActive state', async () => {
+            // Setup: Create manager and register session
+            manager = new CommandStateManager({ onUpdate: onUpdateCallback }, mockCommands);
+            
+            const mockSession = {
+                id: 'test-session-2',
+                type: 'rdbg',
+                name: 'Attach to rdbg (TEST_CMD_1)',
+                workspaceFolder: undefined,
+                configuration: {
+                    type: 'rdbg',
+                    name: 'Attach to rdbg (TEST_CMD_1)',
+                    request: 'attach'
+                }
+            } as vscode.DebugSession;
+            
+            manager.registerDebugSession('TEST_CMD_1', mockSession);
+            await new Promise(resolve => setTimeout(resolve, 10));
+            
+            // Verify session is active
+            let state = manager.getButtonState('TEST_CMD_1');
+            assert.strictEqual(state.debugActive, true);
+            
+            // Act: Unregister debug session
+            manager.unregisterDebugSession(mockSession);
+            await new Promise(resolve => setTimeout(resolve, 10));
+            
+            // Assert: Verify debugActive state is false
+            state = manager.getButtonState('TEST_CMD_1');
+            assert.strictEqual(state.debugActive, false, 'debugActive should be false after unregistering session');
+            
+            // Verify the session is no longer retrievable
+            const retrievedSession = manager.getDebugSession('TEST_CMD_1');
+            assert.strictEqual(retrievedSession, undefined);
+        });
+
+        test('should only consider rdbg sessions as active debug sessions', async () => {
+            // Setup: Create manager
+            manager = new CommandStateManager({ onUpdate: onUpdateCallback }, mockCommands);
+            
+            // Create mock non-rdbg session
+            const mockNonRdbgSession = {
+                id: 'test-session-3',
+                type: 'node',
+                name: 'Node Debug Session',
+                workspaceFolder: undefined,
+                configuration: {
+                    type: 'node',
+                    name: 'Node Debug Session',
+                    request: 'launch'
+                }
+            } as vscode.DebugSession;
+            
+            // Act: Register non-rdbg session
+            manager.registerDebugSession('TEST_CMD_1', mockNonRdbgSession);
+            await new Promise(resolve => setTimeout(resolve, 10));
+            
+            // Assert: Verify debugActive state remains false for non-rdbg sessions
+            const state = manager.getButtonState('TEST_CMD_1');
+            assert.strictEqual(state.debugActive, false, 'debugActive should be false for non-rdbg sessions');
+        });
+
+        test('should only consider sessions with matching command names as active', async () => {
+            // Setup: Create manager
+            manager = new CommandStateManager({ onUpdate: onUpdateCallback }, mockCommands);
+            
+            // Create mock rdbg session with wrong command name
+            const mockWrongNameSession = {
+                id: 'test-session-4',
+                type: 'rdbg',
+                name: 'Attach to rdbg (DIFFERENT_CMD)',
+                workspaceFolder: undefined,
+                configuration: {
+                    type: 'rdbg',
+                    name: 'Attach to rdbg (DIFFERENT_CMD)',
+                    request: 'attach'
+                }
+            } as vscode.DebugSession;
+            
+            // Act: Register session with wrong name
+            manager.registerDebugSession('TEST_CMD_1', mockWrongNameSession);
+            await new Promise(resolve => setTimeout(resolve, 10));
+            
+            // Assert: Verify debugActive state remains false for mismatched names
+            const state = manager.getButtonState('TEST_CMD_1');
+            assert.strictEqual(state.debugActive, false, 'debugActive should be false for sessions with mismatched command names');
+        });
+
+        test('should handle multiple debug sessions for different commands', async () => {
+            // Setup: Create manager
+            manager = new CommandStateManager({ onUpdate: onUpdateCallback }, mockCommands);
+            
+            // Create mock debug sessions for different commands
+            const mockSession1 = {
+                id: 'test-session-5',
+                type: 'rdbg',
+                name: 'Attach to rdbg (TEST_CMD_1)',
+                workspaceFolder: undefined,
+                configuration: {
+                    type: 'rdbg',
+                    name: 'Attach to rdbg (TEST_CMD_1)',
+                    request: 'attach'
+                }
+            } as vscode.DebugSession;
+            
+            const mockSession2 = {
+                id: 'test-session-6',
+                type: 'rdbg',
+                name: 'Attach to rdbg (TEST_CMD_2)',
+                workspaceFolder: undefined,
+                configuration: {
+                    type: 'rdbg',
+                    name: 'Attach to rdbg (TEST_CMD_2)',
+                    request: 'attach'
+                }
+            } as vscode.DebugSession;
+            
+            // Act: Register both sessions
+            manager.registerDebugSession('TEST_CMD_1', mockSession1);
+            manager.registerDebugSession('TEST_CMD_2', mockSession2);
+            await new Promise(resolve => setTimeout(resolve, 10));
+            
+            // Assert: Verify both commands have debugActive = true
+            const state1 = manager.getButtonState('TEST_CMD_1');
+            const state2 = manager.getButtonState('TEST_CMD_2');
+            
+            assert.strictEqual(state1.debugActive, true, 'TEST_CMD_1 should have debugActive = true');
+            assert.strictEqual(state2.debugActive, true, 'TEST_CMD_2 should have debugActive = true');
+            
+            // Act: Unregister one session
+            manager.unregisterDebugSession(mockSession1);
+            await new Promise(resolve => setTimeout(resolve, 10));
+            
+            // Assert: Verify only the unregistered command has debugActive = false
+            const newState1 = manager.getButtonState('TEST_CMD_1');
+            const newState2 = manager.getButtonState('TEST_CMD_2');
+            
+            assert.strictEqual(newState1.debugActive, false, 'TEST_CMD_1 should have debugActive = false after unregistering');
+            assert.strictEqual(newState2.debugActive, true, 'TEST_CMD_2 should still have debugActive = true');
+        });
+
+        test('should detect state change when debugActive changes', async () => {
+            // Setup: Create manager and reset callback spy
+            manager = new CommandStateManager({ onUpdate: onUpdateCallback }, mockCommands);
+            await new Promise(resolve => setTimeout(resolve, 10));
+            onUpdateCallback.resetHistory();
+            
+            const mockSession = {
+                id: 'test-session-7',
+                type: 'rdbg',
+                name: 'Attach to rdbg (TEST_CMD_1)',
+                workspaceFolder: undefined,
+                configuration: {
+                    type: 'rdbg',
+                    name: 'Attach to rdbg (TEST_CMD_1)',
+                    request: 'attach'
+                }
+            } as vscode.DebugSession;
+            
+            // Act: Register debug session (should trigger state change)
+            manager.registerDebugSession('TEST_CMD_1', mockSession);
+            await new Promise(resolve => setTimeout(resolve, 10));
+            
+            // Assert: Verify onUpdate was called due to debugActive state change
+            assert.ok(onUpdateCallback.called, 'onUpdate should be called when debugActive state changes');
+        });
+    });
 });

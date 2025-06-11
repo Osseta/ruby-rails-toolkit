@@ -413,4 +413,155 @@ suite('AppRunner', () => {
             assert.strictEqual(children[0].cmd.description, 'Custom Test Command');
         });
     });
+
+    suite('Debug State UI Tests', () => {
+        test('should hide debug option when debugActive is true', () => {
+            const testCommand: Command = {
+                description: 'Test Server',
+                command: 'rails server',
+                code: 'server',
+                commandType: 'ruby',
+            };
+
+            const debugActiveState: ProcessState = {
+                exists: true,
+                debugActive: true,
+                terminationReason: 'none',
+                hasOutputChannel: true,
+                isLocked: false,
+                workspaceHash: 'mock-hash-1234'
+            };
+
+            const treeItem = new AppCommandTreeItem(testCommand, debugActiveState);
+            const contextValue = treeItem.contextValue || '';
+            
+            // Should not have debug capability when already debugging
+            assert.ok(!contextValue.includes('canDebug'), 'Should not have debug capability when debugActive is true');
+            
+            // Should still have other capabilities
+            assert.ok(contextValue.includes('canStop'), 'Should still have stop capability');
+            assert.ok(contextValue.includes('canShowOutputRunning'), 'Should still have output capability');
+        });
+
+        test('should show debug option when debugActive is false for running ruby commands', () => {
+            const testCommand: Command = {
+                description: 'Test Server',
+                command: 'rails server',
+                code: 'server',
+                commandType: 'ruby',
+            };
+
+            const notDebuggingState: ProcessState = {
+                exists: true,
+                debugActive: false,
+                terminationReason: 'none',
+                hasOutputChannel: true,
+                isLocked: false,
+                workspaceHash: 'mock-hash-1234'
+            };
+
+            const treeItem = new AppCommandTreeItem(testCommand, notDebuggingState);
+            const contextValue = treeItem.contextValue || '';
+            
+            // Should have debug capability when not debugging
+            assert.ok(contextValue.includes('canDebug'), 'Should have debug capability when debugActive is false');
+            
+            // Should also have other capabilities
+            assert.ok(contextValue.includes('canStop'), 'Should have stop capability');
+            assert.ok(contextValue.includes('canShowOutputRunning'), 'Should have output capability');
+        });
+
+        test('should never show debug option for shell commands regardless of debug state', () => {
+            const testCommand: Command = {
+                description: 'Test Shell',
+                command: 'echo "test"',
+                code: 'shell',
+                commandType: 'shell',
+            };
+
+            const notDebuggingState: ProcessState = {
+                exists: true,
+                debugActive: false,
+                terminationReason: 'none',
+                hasOutputChannel: true,
+                isLocked: false,
+                workspaceHash: 'mock-hash-1234'
+            };
+
+            const treeItem = new AppCommandTreeItem(testCommand, notDebuggingState);
+            const contextValue = treeItem.contextValue || '';
+            
+            // Should never have debug capability for shell commands
+            assert.ok(!contextValue.includes('canDebug'), 'Should never have debug capability for shell commands');
+            
+            // Should still have other capabilities
+            assert.ok(contextValue.includes('canStop'), 'Should have stop capability');
+            assert.ok(contextValue.includes('canShowOutputRunning'), 'Should have output capability');
+        });
+
+        test('should show debug option when not running (for run & debug)', () => {
+            const testCommand: Command = {
+                description: 'Test Server',
+                command: 'rails server',
+                code: 'server',
+                commandType: 'ruby',
+            };
+
+            const notRunningState: ProcessState = {
+                exists: false,
+                debugActive: false,
+                terminationReason: 'none',
+                hasOutputChannel: false,
+                isLocked: false,
+                workspaceHash: undefined
+            };
+
+            const treeItem = new AppCommandTreeItem(testCommand, notRunningState);
+            const contextValue = treeItem.contextValue || '';
+            
+            // Should have run capability when not running
+            assert.ok(contextValue.includes('canRun'), 'Should have run capability when not running');
+            
+            // Should not have debug capability when not running (only run & debug)
+            assert.ok(!contextValue.includes('canDebug'), 'Should not have debug capability when not running');
+        });
+
+        test('should handle debug state changes in contextValue correctly', () => {
+            const testCommand: Command = {
+                description: 'Test Server',
+                command: 'rails server',
+                code: 'server',
+                commandType: 'ruby',
+            };
+
+            // Test transition from not debugging to debugging
+            const notDebuggingState: ProcessState = {
+                exists: true,
+                debugActive: false,
+                terminationReason: 'none',
+                hasOutputChannel: true,
+                isLocked: false,
+                workspaceHash: 'mock-hash-1234'
+            };
+
+            const debuggingState: ProcessState = {
+                exists: true,
+                debugActive: true,
+                terminationReason: 'none',
+                hasOutputChannel: true,
+                isLocked: false,
+                workspaceHash: 'mock-hash-1234'
+            };
+
+            // Not debugging - should have debug capability
+            const treeItemNotDebugging = new AppCommandTreeItem(testCommand, notDebuggingState);
+            const contextValueNotDebugging = treeItemNotDebugging.contextValue || '';
+            assert.ok(contextValueNotDebugging.includes('canDebug'), 'Should have debug capability when not debugging');
+
+            // Debugging - should not have debug capability
+            const treeItemDebugging = new AppCommandTreeItem(testCommand, debuggingState);
+            const contextValueDebugging = treeItemDebugging.contextValue || '';
+            assert.ok(!contextValueDebugging.includes('canDebug'), 'Should not have debug capability when debugging');
+        });
+    });
 });

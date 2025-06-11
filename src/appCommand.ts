@@ -232,6 +232,19 @@ export async function debugCommand(command: Command) {
             // For shell commands, debugging is not supported
             return;
         }
+
+        // Check if a debug session is already active for this command using our CommandStateManager
+        const { getGlobalCommandStateManager } = await import('./appRunner');
+        const stateManager = getGlobalCommandStateManager();
+        if (stateManager) {
+            const existingDebugSession = stateManager.getDebugSession(command.code);
+            if (existingDebugSession) {
+                const error = `Debug session is already active for command: ${command.code}`;
+                vscode.window.showErrorMessage(error);
+                throw new Error(error);
+            }
+        }
+
         // Find the running process PID
         const pid = ProcessTracker.getRunningPid(command.code);
         if (!pid) {
