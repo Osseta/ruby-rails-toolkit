@@ -300,7 +300,7 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src",
-    "test": "npm run clean && npm run compile && vscode-test --extensionDevelopmentPath=. --extensionTestsPath=./out/test  --reporter min"
+    "test": "npm run clean && npm run compile && vscode-test --extensionDevelopmentPath=. --extensionTestsPath=./out/test --setupTestsPath=./out/test/setup.js --reporter min"
   },
   "devDependencies": {
     "@types/json5": "^0.0.30",
@@ -314,6 +314,7 @@
     "@vscode/test-electron": "^2.5.2",
     "eslint": "^9.28.0",
     "sinon": "^17.0.0",
+    "source-map-support": "^0.5.21",
     "ts-node": "^10.9.2",
     "typescript": "^5.5.4"
   },

@@ -1,3 +1,6 @@
+// Enable source map support for better stack traces
+import 'source-map-support/register';
+
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 import * as sinon from 'sinon';
