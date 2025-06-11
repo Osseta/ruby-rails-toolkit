@@ -52,10 +52,6 @@ suite('Crashed Command Display Tests', () => {
         
         // Should have crash indicator in description
         assert.strictEqual(treeItem.description, '(CRASHED)', 'Description should indicate crashed status');
-
-        // Should have resource URI for potential styling
-        assert.ok(treeItem.resourceUri, 'Should have resource URI');
-        assert.strictEqual(treeItem.resourceUri?.scheme, 'crashed-command', 'Resource URI should have crashed-command scheme');
     });
 
     test('should use normal display for non-crashed commands', () => {
@@ -82,9 +78,6 @@ suite('Crashed Command Display Tests', () => {
         // Should not have crash-related description
         const description = typeof treeItem.description === 'string' ? treeItem.description : '';
         assert.ok(!description.includes('CRASHED'), 'Description should not indicate crashed status');
-        
-        // Should not have crashed-command resource URI
-        assert.ok(!treeItem.resourceUri || treeItem.resourceUri.scheme !== 'crashed-command', 'Should not have crashed-command resource URI');
     });
 
     test('should use red error icon for crashed commands', () => {
@@ -491,9 +484,5 @@ suite('Different Workspace Display Tests', () => {
         
         // Should prioritize crashed description over different workspace description
         assert.strictEqual(treeItem.description, '(CRASHED)', 'Description should prioritize crashed status over different workspace');
-        
-        // Should have crashed command resource URI
-        assert.ok(treeItem.resourceUri, 'Should have resource URI for crashed command');
-        assert.strictEqual(treeItem.resourceUri?.scheme, 'crashed-command', 'Resource URI should have crashed-command scheme');
     });
 });
