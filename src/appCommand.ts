@@ -14,6 +14,25 @@ const VSCODE_DIR = '.vscode';
 // Global callback for immediate tree view updates
 let onLockAcquiredCallback: (() => void | Promise<void>) | undefined;
 
+// Global reference to the FeatureStateManager for environment variable filtering
+let globalFeatureStateManager: import('./featureStateManager').FeatureStateManager | undefined;
+
+/**
+ * Sets the global FeatureStateManager instance.
+ * This should be called during extension activation.
+ */
+export function setFeatureStateManager(featureStateManager: import('./featureStateManager').FeatureStateManager): void {
+    globalFeatureStateManager = featureStateManager;
+}
+
+/**
+ * Gets the global FeatureStateManager instance.
+ * @returns The FeatureStateManager instance or undefined if not set
+ */
+export function getFeatureStateManager(): import('./featureStateManager').FeatureStateManager | undefined {
+    return globalFeatureStateManager;
+}
+
 /**
  * Registers a callback to be called immediately when a lock is acquired.
  * This is used to trigger immediate tree view updates to show loading spinners.
@@ -83,6 +102,26 @@ export function getDefaultAppConfig(): AppConfig {
             command: 'bin/shakapacker-dev-server',
             commandType: 'shell'
           }
+        ],
+        features: [
+          {
+            code: 'DEBUG',
+            name: 'Debug Mode',
+            description: 'Enables debugging flags for development',
+            environment: {
+              whitelist: ['DEBUG', 'VERBOSE'],
+              blacklist: ['SILENT', 'QUIET']
+            }
+          },
+          {
+            code: 'PERFORMANCE',
+            name: 'Performance Monitoring',
+            description: 'Enables performance monitoring and profiling',
+            environment: {
+              whitelist: ['PROFILE', 'BENCHMARK'],
+              blacklist: ['NO_PROFILING']
+            }
+          }
         ]
     };
 }
@@ -98,6 +137,22 @@ export function saveAppConfig(config: AppConfig): void {
         fs.mkdirSync(dir, { recursive: true });
     }
     fs.writeFileSync(filePath, JSON.stringify(config, null, 2), 'utf8');
+}
+
+/**
+ * Gets additional forbidden environment variables based on feature states.
+ * @returns Array of environment variable names to exclude from process spawning
+ */
+function getAdditionalForbiddenVars(): string[] {
+    const featureStateManager = getFeatureStateManager();
+    if (!featureStateManager) {
+        return [];
+    }
+
+    const config = loadAppConfig();
+    const features = config.features || [];
+    
+    return featureStateManager.getForbiddenEnvironmentVariables(features);
 }
 
 /**
@@ -122,11 +177,16 @@ export async function runCommand(command: Command, waitFlag: string = '-n') {
             logger.debug(`Built rdbg command for ${command.code}`, { commandToRun });
         }
         
+        // Get additional forbidden environment variables based on feature states
+        const additionalForbiddenVars = getAdditionalForbiddenVars();
+        logger.debug(`Additional forbidden vars for ${command.code}`, { additionalForbiddenVars });
+        
         const childProcess = await ProcessTracker.spawnAndTrack({
             code: command.code,
             command: commandToRun,
             args: [],
-            options: { stdio: 'ignore' }
+            options: { stdio: 'ignore' },
+            additionalForbiddenVars
         });
 
         logger.debug(`Process spawned for ${command.code}`, { pid: childProcess.pid });
@@ -158,11 +218,16 @@ export async function runAndDebugCommand(command: Command) {
         const commandToRun = buildRdbgCommand(command.code, command.command, '');
         logger.debug(`Built rdbg command for debugging ${command.code}`, { commandToRun });
         
+        // Get additional forbidden environment variables based on feature states
+        const additionalForbiddenVars = getAdditionalForbiddenVars();
+        logger.debug(`Additional forbidden vars for ${command.code}`, { additionalForbiddenVars });
+        
         const childProcess = await ProcessTracker.spawnAndTrack({
             code: command.code,
             command: commandToRun,
             args: [],
-            options: { stdio: 'ignore' }
+            options: { stdio: 'ignore' },
+            additionalForbiddenVars
         });
 
         logger.debug(`Debug process spawned for ${command.code}`, { pid: childProcess.pid });

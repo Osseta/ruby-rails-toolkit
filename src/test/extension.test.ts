@@ -20,6 +20,55 @@ suite('Extension Activation Tests', () => {
     setup(() => {
         sandbox = sinon.createSandbox();
         
+        // Mock vscode.EventEmitter for features tree view
+        if (!vscode.EventEmitter) {
+            (vscode as any).EventEmitter = function(this: any) {
+                const self = this;
+                self._listeners = [];
+                self.event = function(listener: any) {
+                    self._listeners.push(listener);
+                    return { dispose: function() {} };
+                };
+                self.fire = function(data: any) {
+                    self._listeners.forEach(function(listener: any) {
+                        listener(data);
+                    });
+                };
+                return self;
+            };
+        }
+
+        // Mock other VS Code components for tree views
+        if (!vscode.TreeItemCheckboxState) {
+            (vscode as any).TreeItemCheckboxState = { Checked: 1, Unchecked: 0 };
+        }
+        if (!vscode.TreeItemCollapsibleState) {
+            (vscode as any).TreeItemCollapsibleState = { None: 0, Collapsed: 1, Expanded: 2 };
+        }
+        if (!vscode.TreeItem) {
+            (vscode as any).TreeItem = class {
+                constructor(label: string, collapsibleState: any) {
+                    (this as any).label = label;
+                    (this as any).collapsibleState = collapsibleState;
+                }
+            };
+        }
+        if (!vscode.ThemeIcon) {
+            (vscode as any).ThemeIcon = class {
+                constructor(id: string, color?: any) {
+                    (this as any).id = id;
+                    (this as any).color = color;
+                }
+            };
+        }
+        if (!vscode.ThemeColor) {
+            (vscode as any).ThemeColor = class {
+                constructor(id: string) {
+                    (this as any).id = id;
+                }
+            };
+        }
+        
         // Mock VS Code workspace configuration
         mockConfig = {
             get: sandbox.stub(),
@@ -58,6 +107,19 @@ suite('Extension Activation Tests', () => {
         mockVscodeWrapper.showInformationMessage.resolves('Reload Window' as any);
         mockVscodeWrapper.executeCommand.resolves();
         
+        // Mock vscode.window for tree view creation
+        if (!vscode.window.createTreeView) {
+            (vscode.window as any).createTreeView = sandbox.stub().returns({
+                onDidChangeCheckboxState: sandbox.stub().returns({ dispose: sandbox.stub() }),
+                dispose: sandbox.stub()
+            });
+        }
+        
+        // Mock vscode.commands for command registration
+        if (!vscode.commands.registerCommand) {
+            (vscode.commands as any).registerCommand = sandbox.stub().returns({ dispose: sandbox.stub() });
+        }
+        
         // Set up default configuration values
         mockConfig.get.withArgs('hideAnsiPunctuation', true).returns(true);
         mockConfig.get.withArgs('disableRspecIntegration', true).returns(true);
@@ -71,8 +133,13 @@ suite('Extension Activation Tests', () => {
                 update: sandbox.stub()
             },
             workspaceState: {
-                get: sandbox.stub(),
-                update: sandbox.stub()
+                get: sandbox.stub().callsFake((key: string, defaultValue?: any) => {
+                    if (key === 'ruby-rails-toolkit.featureStates') {
+                        return {};
+                    }
+                    return defaultValue;
+                }),
+                update: sandbox.stub().resolves()
             }
         } as any;
         

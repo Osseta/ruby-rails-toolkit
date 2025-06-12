@@ -192,9 +192,22 @@ export class ProcessTracker {
      * @param command Command to run
      * @param args Arguments for the command
      * @param options Spawn options
+     * @param additionalForbiddenVars Additional environment variables to exclude
      * @returns Promise that resolves with the spawned ChildProcess when the process is ready
      */
-    static async spawnAndTrack({ code, command, args = [], options = {} }: { code: string, command: string, args?: string[], options?: any }): Promise<ChildProcessWithoutNullStreams> {
+    static async spawnAndTrack({ 
+        code, 
+        command, 
+        args = [], 
+        options = {},
+        additionalForbiddenVars = []
+    }: { 
+        code: string, 
+        command: string, 
+        args?: string[], 
+        options?: any,
+        additionalForbiddenVars?: string[]
+    }): Promise<ChildProcessWithoutNullStreams> {
         const logger = getLogger();
         logger.info(`Spawning and tracking process: ${code}`, { command, args });
         
@@ -230,7 +243,8 @@ export class ProcessTracker {
         // Prepare environment: copy process.env and remove specific variables
         const forbiddenVars = [
             'RBENV_DIR', 'RBENV_HOOK_PATH', 'RBENV_ORIG_PATH',
-            'RBENV_ROOT', 'RBENV_VERSION', 'RUBYLIB', 'BUNDLE_GEMFILE'
+            'RBENV_ROOT', 'RBENV_VERSION', 'RUBYLIB', 'BUNDLE_GEMFILE',
+            ...additionalForbiddenVars
         ];
         const env = { ...process.env };
         for (const v of forbiddenVars) {

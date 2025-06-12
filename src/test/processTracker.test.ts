@@ -134,6 +134,60 @@ suite('ProcessTracker', () => {
         assert.ok(!ProcessTracker.isRunning(code));
     });
 
+    test('should accept and use additional forbidden variables', async function() {
+        const additionalForbiddenVars = ['CUSTOM_VAR1', 'CUSTOM_VAR2'];
+        
+        // Set some environment variables that should be filtered
+        process.env.CUSTOM_VAR1 = 'should-be-removed';
+        process.env.CUSTOM_VAR2 = 'should-also-be-removed';
+        process.env.ALLOWED_VAR = 'should-remain';
+        
+        let capturedEnv: any;
+        
+        // Mock spawn to capture the environment passed to it
+        const originalSpawn = (childProcess as any).spawn;
+        (childProcess as any).spawn = sinon.stub().callsFake((command: string, args: any, options: any) => {
+            capturedEnv = options.env;
+            return originalSpawn.call(childProcess, command, args, options);
+        });
+
+        try {
+            await ProcessTracker.spawnAndTrack({
+                code,
+                command: 'echo',
+                args: ['test'],
+                options: { stdio: 'ignore' },
+                additionalForbiddenVars
+            });
+
+            // Verify that additional forbidden vars were removed
+            assert.ok(!capturedEnv.hasOwnProperty('CUSTOM_VAR1'), 'CUSTOM_VAR1 should be removed');
+            assert.ok(!capturedEnv.hasOwnProperty('CUSTOM_VAR2'), 'CUSTOM_VAR2 should be removed');
+            assert.ok(capturedEnv.hasOwnProperty('ALLOWED_VAR'), 'ALLOWED_VAR should remain');
+            
+            // Verify that default forbidden vars are still removed
+            assert.ok(!capturedEnv.hasOwnProperty('RBENV_VERSION'), 'Default forbidden vars should still be removed');
+        } finally {
+            // Clean up
+            delete process.env.CUSTOM_VAR1;
+            delete process.env.CUSTOM_VAR2;
+            delete process.env.ALLOWED_VAR;
+        }
+    });
+
+    test('should handle empty additional forbidden variables array', async function() {
+        const child = await ProcessTracker.spawnAndTrack({
+            code,
+            command: 'echo',
+            args: ['test'],
+            options: { stdio: 'ignore' },
+            additionalForbiddenVars: []
+        });
+        
+        // Should work normally with empty array
+        assert.ok(child.pid);
+    });
+
     test('isRunning returns false if no pid file', () => {
         assert.ok(!ProcessTracker.isRunning('NONEXISTENT'));
     });

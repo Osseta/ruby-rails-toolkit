@@ -5,6 +5,9 @@ import { FileLockManager } from './fileLockManager';
 import { ProcessTracker } from './processTracker';
 import { getLogger, LogLevel } from './logger';
 import { ExtensionVscodeWrapper, defaultExtensionVscodeWrapper } from './extensionVscodeWrapper';
+import { FeatureStateManager } from './featureStateManager';
+import { registerFeaturesTreeView } from './featuresTreeView';
+import { setFeatureStateManager } from './appCommand';
 
 /**
  * Applies global configuration for output channels to hide control characters
@@ -39,6 +42,12 @@ export function activate(context: import('vscode').ExtensionContext, vscodeWrapp
     
     registerAppRunnerTreeView(context);
     logger.debug('App Runner TreeView registered');
+    
+    // Initialize FeatureStateManager and register Features TreeView
+    const featureStateManager = new FeatureStateManager(context);
+    setFeatureStateManager(featureStateManager);
+    registerFeaturesTreeView(context, featureStateManager);
+    logger.debug('Features TreeView registered');
     
     applyOutputChannelConfiguration(vscodeWrapper);
     logger.debug('Output channel configuration applied');

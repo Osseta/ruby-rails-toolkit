@@ -34,6 +34,27 @@ export type Command = {
 
 export type Commands = Command[];
 
+/**
+ * Represents the environment configuration for a feature.
+ */
+export type FeatureEnvironment = {
+  whitelist: string[];
+  blacklist: string[];
+}
+
+/**
+ * Represents a feature with environment variable configuration.
+ */
+export type Feature = {
+  code: string;
+  name: string;
+  description: string;
+  environment: FeatureEnvironment;
+}
+
+export type Features = Feature[];
+
 export type AppConfig = {
   commands: Commands;
+  features?: Features;
 }

@@ -98,6 +98,11 @@
           "id": "appRunnerTreeView",
           "name": "App Runner",
           "icon": "$(run)"
+        },
+        {
+          "id": "featuresTreeView",
+          "name": "Features",
+          "icon": "$(settings-gear)"
         }
       ]
     },
@@ -168,6 +173,15 @@
       {
         "command": "rspec-runner.debugRubySpec",
         "title": "Debug RSpec"
+      },
+      {
+        "command": "features.refresh",
+        "title": "Refresh Features",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "features.toggle",
+        "title": "Toggle Feature"
       }
     ],
     "menus": {
@@ -193,6 +207,11 @@
           "command": "appRunner.showMenu",
           "when": "view == appRunnerTreeView",
           "group": "navigation@3"
+        },
+        {
+          "command": "features.refresh",
+          "when": "view == featuresTreeView",
+          "group": "navigation@1"
         }
       ],
       "view/item/context": [
