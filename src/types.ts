@@ -25,6 +25,15 @@ export type ProcessState = {
   workspaceHash?: string;
 };
 
+export const defaultProcessState: ProcessState = {
+  exists: false,
+  debugActive: false,
+  terminationReason: 'none',  // Default to 'none' for no termination reason
+  hasOutputChannel: false,
+  isLocked: false,
+  workspaceHash: undefined,
+};
+
 export type Command = {
   code: string;
   description: string;

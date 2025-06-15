@@ -2,7 +2,8 @@ import * as vscode from 'vscode';
 import { runCommand, stopCommand, debugCommand, loadAppConfig, stopAllCommands, runAndDebugCommand, appCommandsFileExists, getDefaultAppConfig, setOnLockAcquiredCallback } from './appCommand';
 import { ProcessTracker } from './processTracker';
 import { CommandStateManager } from './commandStateManager';
-import type { Commands, Command, ProcessState } from './types';
+import type { Command, ProcessState } from './types';
+import { defaultProcessState } from './types';
 import { workspaceHash } from './utils';
 import { getLogger } from './logger';
 
@@ -27,7 +28,7 @@ export class AppCommandTreeItem extends vscode.TreeItem {
 
     constructor(cmd: Command, state?: ProcessState) {
         // Provide default state if not supplied
-        const safeState = state || { exists: false, debugActive: false, terminationReason: 'none', hasOutputChannel: false, isLocked: false, workspaceHash: undefined };
+        const safeState = state || defaultProcessState;
         // Set label from command description
         super(cmd.description, vscode.TreeItemCollapsibleState.None);
         this.cmd = cmd;
@@ -137,14 +138,7 @@ export class AppRunnerTreeDataProvider implements vscode.TreeDataProvider<AppCom
     }
 
     public state(commandCode: string): ProcessState {
-        return this.getStateManager()?.getButtonState(commandCode) || { 
-            exists: false, 
-            debugActive: false, 
-            terminationReason: 'none', 
-            hasOutputChannel: false, 
-            isLocked: true, 
-            workspaceHash: undefined 
-        };
+        return this.getStateManager()?.getButtonState(commandCode) || defaultProcessState;
     }
 
     /**

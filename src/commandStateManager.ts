@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { ProcessTracker } from './processTracker';
 import { FileLockManager } from './fileLockManager';
 import type { ProcessState } from './types';
+import { defaultProcessState } from './types';
 import { workspaceHash } from './utils';
 import { getLogger } from './logger';
 
@@ -102,14 +103,7 @@ export class CommandStateManager {
     }
 
     public getButtonState(code: string): ProcessState {
-        return this.buttonStates[code] || {
-            exists: false,
-            debugActive: false,
-            terminationReason: 'none',
-            hasOutputChannel: false,
-            isLocked: false,
-            workspaceHash: undefined
-        };
+        return this.buttonStates[code] || defaultProcessState;
     }
 
     public getButtonStates(): Record<string, ProcessState> {
