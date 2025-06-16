@@ -4,7 +4,7 @@ import * as sinon from 'sinon';
 import { ProcessTracker } from '../processTracker';
 import * as appCommand from '../appCommand';
 import * as utils from '../utils';
-import { spawnAndTrackSuccess } from './helpers/testHelpers';
+import { spawnAndTrackSuccess } from './helpers/processHelpers';
 import { FsHelperMock } from './helpers/fsHelperMock';
 
 suite('Process Crash Detection', () => {

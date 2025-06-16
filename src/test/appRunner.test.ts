@@ -10,7 +10,7 @@ import { ProcessTracker } from '../processTracker';
 import { AppCommandTreeItem } from '../appRunner';
 import type { Command, ProcessState } from '../types';
 import * as utils from '../utils';
-import { spawnAndTrackSuccess } from './helpers/testHelpers';
+import { spawnAndTrackSuccess } from './helpers/processHelpers';
 import { FsHelperMock } from './helpers/fsHelperMock';
 
 suite('AppRunner', () => {
