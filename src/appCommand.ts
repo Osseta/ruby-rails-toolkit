@@ -1,4 +1,3 @@
-import * as fs from 'fs';
 import * as path from 'path';
 import * as JSON5 from 'json5';
 import { Command, AppConfig } from './types';
@@ -7,6 +6,7 @@ import { FileLockManager } from './fileLockManager';
 import * as vscode from 'vscode';
 import { listRdbgSocks } from './utils';
 import { getLogger } from './logger';
+import { FsHelper } from './fsHelper';
 
 const APP_COMMANDS_FILENAME = 'app_commands.jsonc';
 const VSCODE_DIR = '.vscode';
@@ -58,7 +58,7 @@ function getAppCommandsFilePath(): string {
  */
 export function appCommandsFileExists(): boolean {
     try {
-        return fs.existsSync(getAppCommandsFilePath());
+        return FsHelper.existsSync(getAppCommandsFilePath());
     } catch {
         return false;
     }
@@ -71,10 +71,10 @@ export function appCommandsFileExists(): boolean {
  */
 export function loadAppConfig(): AppConfig {
     const filePath = getAppCommandsFilePath();
-    if (!fs.existsSync(filePath)) {
+    if (!FsHelper.existsSync(filePath)) {
         return getDefaultAppConfig();
     }
-    const content = fs.readFileSync(filePath, 'utf8');
+    const content = FsHelper.readFileSync(filePath, 'utf8');
     return JSON5.parse(content) as AppConfig;
 }
 
@@ -133,10 +133,10 @@ export function getDefaultAppConfig(): AppConfig {
 export function saveAppConfig(config: AppConfig): void {
     const filePath = getAppCommandsFilePath();
     const dir = path.dirname(filePath);
-    if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
+    if (!FsHelper.existsSync(dir)) {
+        FsHelper.mkdirSync(dir, { recursive: true });
     }
-    fs.writeFileSync(filePath, JSON.stringify(config, null, 2), 'utf8');
+    FsHelper.writeFileSync(filePath, JSON.stringify(config, null, 2), 'utf8');
 }
 
 /**

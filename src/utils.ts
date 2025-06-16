@@ -3,8 +3,7 @@ import * as crypto from 'crypto';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { RdbgSocketPath } from './types';
-import * as fs from 'fs';
-import * as util from 'util';
+import { FsHelper } from './fsHelper';
 
 const execAsync = promisify(exec);
 
@@ -63,8 +62,7 @@ export async function getLsofOutputForSocket(socket: RdbgSocketPath): Promise<st
  */
 export async function unlinkSocket(socket: RdbgSocketPath): Promise<void> {
     if (socket === null) { return; }
-    const unlinkAsync = util.promisify(fs.unlink);
-    await unlinkAsync(socket);
+    await FsHelper.unlinkSync(socket);
 }
 
 /**
@@ -80,4 +78,3 @@ export function extractPidFromRdbgSocketPath(socketPath: string): number {
     }
     throw new Error('Could not extract PID from rdbg socket path');
 }
-

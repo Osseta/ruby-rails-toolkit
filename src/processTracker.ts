@@ -1,4 +1,3 @@
-import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { spawn, ChildProcessWithoutNullStreams } from 'child_process';
@@ -6,6 +5,7 @@ import * as vscode from 'vscode';
 import type { ProcessTerminationReason } from './types';
 import { workspaceHash } from './utils';
 import { getLogger } from './logger';
+import { FsHelper } from './fsHelper';
 
 /**
  * Manages process tracking using PID files in a user-specific directory.
@@ -47,8 +47,8 @@ export class ProcessTracker {
      * Ensures the PID directory exists.
      */
     static ensurePidDir(): void {
-        if (!fs.existsSync(this.getPidDir())) {
-            fs.mkdirSync(this.getPidDir(), { recursive: true });
+        if (!FsHelper.existsSync(this.getPidDir())) {
+            FsHelper.mkdirSync(this.getPidDir(), { recursive: true });
         }
     }
 
@@ -56,8 +56,8 @@ export class ProcessTracker {
      * Ensures the state directory exists.
      */
     static ensureStateDir(): void {
-        if (!fs.existsSync(this.getStateDir())) {
-            fs.mkdirSync(this.getStateDir(), { recursive: true });
+        if (!FsHelper.existsSync(this.getStateDir())) {
+            FsHelper.mkdirSync(this.getStateDir(), { recursive: true });
         }
     }
 
@@ -89,7 +89,7 @@ export class ProcessTracker {
             workspaceHash: existingState.workspaceHash
         };
         
-        fs.writeFileSync(stateFile, JSON.stringify(state), 'utf8');
+        FsHelper.writeFileSync(stateFile, JSON.stringify(state), 'utf8');
     }
 
     /**
@@ -105,8 +105,8 @@ export class ProcessTracker {
      */
     static clearTerminationReason(code: string): void {
         const stateFile = this.getStateFilePath(code);
-        if (fs.existsSync(stateFile)) {
-            fs.unlinkSync(stateFile);
+        if (FsHelper.existsSync(stateFile)) {
+            FsHelper.unlinkSync(stateFile);
         }
     }
 
@@ -124,7 +124,7 @@ export class ProcessTracker {
             workspaceHash: hash
         };
         
-        fs.writeFileSync(stateFile, JSON.stringify(state), 'utf8');
+        FsHelper.writeFileSync(stateFile, JSON.stringify(state), 'utf8');
     }
 
     /**
@@ -142,7 +142,7 @@ export class ProcessTracker {
         this.ensureStateDir();
         const stateFile = this.getStateFilePath(code);
         
-        if (fs.existsSync(stateFile)) {
+        if (FsHelper.existsSync(stateFile)) {
             // Read existing state to preserve termination reason
             const existingState = this.readState(code);
             
@@ -152,10 +152,10 @@ export class ProcessTracker {
                     terminationReason: existingState.terminationReason
                     // workspaceHash is intentionally omitted
                 };
-                fs.writeFileSync(stateFile, JSON.stringify(state), 'utf8');
+                FsHelper.writeFileSync(stateFile, JSON.stringify(state), 'utf8');
             } else {
                 // No termination reason to preserve, delete the file
-                fs.unlinkSync(stateFile);
+                FsHelper.unlinkSync(stateFile);
             }
         }
     }
@@ -165,12 +165,12 @@ export class ProcessTracker {
      */
     private static readState(code: string): { terminationReason?: ProcessTerminationReason, workspaceHash?: string } {
         const stateFile = this.getStateFilePath(code);
-        if (!fs.existsSync(stateFile)) {
+        if (!FsHelper.existsSync(stateFile)) {
             return {};
         }
         
         try {
-            const content = fs.readFileSync(stateFile, 'utf8').trim();
+            const content = FsHelper.readFileSync(stateFile, 'utf8').trim();
             // Handle both old format (string) and new format (JSON)
             if (content.startsWith('{')) {
                 return JSON.parse(content);
@@ -282,7 +282,7 @@ export class ProcessTracker {
                 }
                 
                 // Write PID file only after process has actually started
-                fs.writeFileSync(pidFile, String(child.pid));
+                FsHelper.writeFileSync(pidFile, String(child.pid));
                 logger.info(`Process spawned successfully: ${code}`, { 
                     pid: child.pid, 
                     pidFile,
@@ -301,10 +301,11 @@ export class ProcessTracker {
             child.stdout?.once('data', onData);
             child.stderr?.once('data', onData);
             
-            // Fallback: consider started after a short delay even without output
+            // Fallback: consider started after a delay even without output
             startupTimer = setTimeout(() => {
+               // reject(new Error(`Process ${code} did not produce output within 5 seconds, assuming it has started.`));
                 markAsStarted();
-            }, 100);
+            }, 5000);
             
             // Handle immediate exit (before startup)
             child.on('exit', (exitCode: number | null, signal: string | null) => {
@@ -316,8 +317,8 @@ export class ProcessTracker {
                 
                 logger.info(`Process ${code} exited`, { exitCode, signal, pid: child.pid });
                 
-                if (fs.existsSync(pidFile)) {
-                    fs.unlinkSync(pidFile);
+                if (FsHelper.existsSync(pidFile)) {
+                    FsHelper.unlinkSync(pidFile);
                     logger.debug(`Removed PID file for ${code}`, { pidFile });
                 }
                 
@@ -368,13 +369,13 @@ export class ProcessTracker {
      */
     static isRunning(code: string): boolean {
         const pidFile = this.getPidFilePath(code);
-        if (!fs.existsSync(pidFile)) {return false;}
-        const pid = parseInt(fs.readFileSync(pidFile, 'utf8'));
+        if (!FsHelper.existsSync(pidFile)) {return false;}
+        const pid = parseInt(FsHelper.readFileSync(pidFile, 'utf8'));
         try {
             process.kill(pid, 0);
             return true;
         } catch {
-            fs.unlinkSync(pidFile);
+            FsHelper.unlinkSync(pidFile);
             return false;
         }
     }
@@ -386,15 +387,15 @@ export class ProcessTracker {
      */
     static getRunningPid(code: string): number | undefined {
         const pidFile = this.getPidFilePath(code);
-        if (!fs.existsSync(pidFile)) {
+        if (!FsHelper.existsSync(pidFile)) {
             return undefined;
         }
-        const pid = parseInt(fs.readFileSync(pidFile, 'utf8'));
+        const pid = parseInt(FsHelper.readFileSync(pidFile, 'utf8'));
         try {
             process.kill(pid, 0);
             return pid;
         } catch {
-            fs.unlinkSync(pidFile);
+            FsHelper.unlinkSync(pidFile);
             return undefined;
         }
     }
@@ -434,8 +435,8 @@ export class ProcessTracker {
                             // Process might have died between checks
                         }
                         // Clean up and resolve
-                        if (fs.existsSync(pidFile)) {
-                            fs.unlinkSync(pidFile);
+                        if (FsHelper.existsSync(pidFile)) {
+                            FsHelper.unlinkSync(pidFile);
                         }
                         this.clearWorkspaceHash(code);
                         resolve();
@@ -447,8 +448,8 @@ export class ProcessTracker {
                     logger.debug(`Polling process ${code} with PID ${pid}, retry count: ${retryCount}`);
                 } catch {
                     // Process has stopped (process.kill(pid, 0) threw an error)
-                    if (fs.existsSync(pidFile)) {
-                        fs.unlinkSync(pidFile);
+                    if (FsHelper.existsSync(pidFile)) {
+                        FsHelper.unlinkSync(pidFile);
                     }
                     this.clearWorkspaceHash(code);
                     logger.info(`Process ${code} with PID ${pid} has stopped gracefully`);
@@ -472,7 +473,7 @@ export class ProcessTracker {
         const logger = getLogger();
         const pidFile = this.getPidFilePath(code);
         
-        if (!fs.existsSync(pidFile)) {
+        if (!FsHelper.existsSync(pidFile)) {
             logger.debug(`No PID file found for ${code}, process not running`);
             return;
         }
@@ -481,7 +482,7 @@ export class ProcessTracker {
         this.setTerminationReason(code, 'user-requested');
         logger.debug(`Set termination reason to 'user-requested' for ${code}`);
         
-        const pid = parseInt(fs.readFileSync(pidFile, 'utf8'));
+        const pid = parseInt(FsHelper.readFileSync(pidFile, 'utf8'));
         logger.info(`Stopping process ${code}`, { pid });
         
         // First attempt: graceful termination with SIGTERM
@@ -491,8 +492,8 @@ export class ProcessTracker {
         } catch (error) {
             // Process might already be dead
             logger.debug(`Failed to send SIGTERM to process ${code}`, { pid, error });
-            if (fs.existsSync(pidFile)) {
-                fs.unlinkSync(pidFile);
+            if (FsHelper.existsSync(pidFile)) {
+                FsHelper.unlinkSync(pidFile);
             }
             this.clearWorkspaceHash(code);
             return;
@@ -537,7 +538,7 @@ export class ProcessTracker {
      */
     static listRunningCodes(): string[] {
         this.ensurePidDir();
-        return fs.readdirSync(this.getPidDir())
+        return FsHelper.readdirSync(this.getPidDir())
             .filter(f => f.endsWith('.pid'))
             .map(f => f.replace(/\.pid$/, ''))
             .filter(code => this.isRunning(code));
@@ -549,10 +550,10 @@ export class ProcessTracker {
     static clearAllTerminationReasons(): void {
         this.ensureStateDir();
         try {
-            const stateFiles = fs.readdirSync(this.getStateDir())
+            const stateFiles = FsHelper.readdirSync(this.getStateDir())
                 .filter(f => f.endsWith('.state'));
             for (const file of stateFiles) {
-                fs.unlinkSync(path.join(this.getStateDir(), file));
+                FsHelper.unlinkSync(path.join(this.getStateDir(), file));
             }
         } catch (error) {
             // Directory might not exist or be empty, which is fine

@@ -4,21 +4,36 @@ import 'source-map-support/register';
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 import * as sinon from 'sinon';
-import * as fs from 'fs';
 import * as childProcess from 'child_process';
 import { EventEmitter } from 'events';
 import { ProcessTracker } from '../processTracker';
 import { AppCommandTreeItem } from '../appRunner';
 import type { Command, ProcessState } from '../types';
 import * as utils from '../utils';
+import { spawnAndTrackSuccess } from './helpers/testHelpers';
+import { FsHelperMock } from './helpers/fsHelperMock';
 
 suite('AppRunner', () => {
     let sandbox: sinon.SinonSandbox;
+    let mockWorkspaceFolder: any;
 
     setup(() => {
         sandbox = sinon.createSandbox();
+        // Reset the mock filesystem
+        FsHelperMock.reset();
+        FsHelperMock.mock(sandbox);
+        // Mock process.kill to avoid killing actual processes
+        sandbox.stub(process, 'kill').returns(true as any);
+
         // Mock workspaceHash to return a predictable value
         sandbox.stub(utils, 'workspaceHash').returns('mock-hash-1234');
+
+        // Mock vscode workspace
+        mockWorkspaceFolder = {
+            uri: { fsPath: '/test/workspace' }
+        };
+        
+        sandbox.stub(vscode.workspace, 'workspaceFolders').value([mockWorkspaceFolder]);
         
         // Ensure vscode.Uri exists and mock parse
         if (!vscode.Uri) {
@@ -60,6 +75,7 @@ suite('AppRunner', () => {
     });
 
     teardown(() => {
+        FsHelperMock.reset();
         sandbox.restore();
     });
 
@@ -77,7 +93,8 @@ suite('AppRunner', () => {
                 debugActive: false,
                 terminationReason: 'none',
                 hasOutputChannel: false,
-            isLocked: false            };
+            isLocked: false           
+           };
 
             const item = new AppCommandTreeItem(testCommand, state);
             assert.strictEqual(item.contextValue, 'canRun');
@@ -153,9 +170,10 @@ suite('AppRunner', () => {
     });
 
     suite('ProcessTracker output channel methods', () => {
-        test('should return true when output channel exists', async () => {
+        let mockOutputChannel: any;
+        setup(() => {
             // Create a mock output channel first
-            const mockOutputChannel = {
+            mockOutputChannel = {
                 show: sandbox.stub(),
                 append: sandbox.stub(),
                 appendLine: sandbox.stub(),
@@ -170,38 +188,11 @@ suite('AppRunner', () => {
                 logLevel: 1 // vscode.LogLevel.Info
             };
             sandbox.stub(vscode.window, 'createOutputChannel').returns(mockOutputChannel as any);
+        });
 
-            // Mock filesystem to simulate PID file creation
-            const mockFiles = new Map();
-            sandbox.stub(fs, 'existsSync').returns(true);
-            sandbox.stub(fs, 'writeFileSync').callsFake((path: any, data: any) => {
-                mockFiles.set(String(path), String(data));
-            });
-            sandbox.stub(fs, 'readFileSync').callsFake((path: any) => {
-                return mockFiles.get(String(path)) || '12345';
-            });
-            sandbox.stub(fs, 'unlinkSync').callsFake((path: any) => {
-                mockFiles.delete(String(path));
-            });
-            sandbox.stub(fs, 'mkdirSync').returns(undefined);
-
-            // Mock child_process.spawn to avoid actual process spawning
-            const mockChild = new EventEmitter() as any;
-            mockChild.pid = 12345;
-            mockChild.stdout = new EventEmitter();
-            mockChild.stderr = new EventEmitter();
-            mockChild.kill = sandbox.stub().returns(true);
-            sandbox.stub(childProcess, 'spawn').returns(mockChild);
-
-            // Mock process.kill to avoid killing actual processes
-            sandbox.stub(process, 'kill').returns(true as any);
-
+        test('should return true when output channel exists', async () => {
             // Spawn a process to create the output channel
-            await ProcessTracker.spawnAndTrack({
-                code: 'TEST_HAS_OUTPUT',
-                command: 'echo "test"',
-                args: []
-            });
+            await spawnAndTrackSuccess('TEST_HAS_OUTPUT', [], sandbox);
 
             assert.strictEqual(ProcessTracker.hasOutputChannel('TEST_HAS_OUTPUT'), true);
             
@@ -214,64 +205,14 @@ suite('AppRunner', () => {
         });
 
         test('should return output channel when it exists', async () => {
-            // Create a mock output channel first
-            const mockOutputChannel = {
-                show: sandbox.stub(),
-                append: sandbox.stub(),
-                appendLine: sandbox.stub(),
-                dispose: sandbox.stub(),
-                clear: sandbox.stub(),
-                // Add LogOutputChannel methods
-                trace: sinon.stub(),
-                debug: sinon.stub(),
-                info: sinon.stub(),
-                warn: sinon.stub(),
-                error: sinon.stub(),
-                logLevel: 1 // vscode.LogLevel.Info
-            };
-            sandbox.stub(vscode.window, 'createOutputChannel').returns(mockOutputChannel as any);
-
-            // Mock filesystem to simulate PID file creation
-            const mockFiles = new Map();
-            sandbox.stub(fs, 'existsSync').returns(true);
-            sandbox.stub(fs, 'writeFileSync').callsFake((path: any, data: any) => {
-                mockFiles.set(String(path), String(data));
-            });
-            sandbox.stub(fs, 'readFileSync').callsFake((path: any) => {
-                return mockFiles.get(String(path)) || '12345';
-            });
-            sandbox.stub(fs, 'unlinkSync').callsFake((path: any) => {
-                mockFiles.delete(String(path));
-            });
-            sandbox.stub(fs, 'mkdirSync').returns(undefined);
-
-            // Mock child_process.spawn to avoid actual process spawning
-            const mockChild = new EventEmitter() as any;
-            mockChild.pid = 12345;
-            mockChild.stdout = new EventEmitter();
-            mockChild.stderr = new EventEmitter();
-            mockChild.kill = sandbox.stub().returns(true);
-            sandbox.stub(childProcess, 'spawn').returns(mockChild);
-
-            // Mock process.kill to avoid killing actual processes
-            sandbox.stub(process, 'kill').returns(true as any);
-
             // Spawn a process to create the output channel
-            await ProcessTracker.spawnAndTrack({
-                code: 'TEST_GET_OUTPUT',
-                command: 'echo "test"',
-                args: []
-            });
+            await spawnAndTrackSuccess('TEST_GET_OUTPUT', [], sandbox);
 
             // First spawn should not call clear (new output channel)
             assert.strictEqual(mockOutputChannel.clear.callCount, 0);
 
             // Spawn again with the same code to test reusing existing output channel
-            await ProcessTracker.spawnAndTrack({
-                code: 'TEST_GET_OUTPUT',
-                command: 'echo "test2"',
-                args: []
-            });
+            await spawnAndTrackSuccess('TEST_GET_OUTPUT', [], sandbox);
 
             // Second spawn should call clear (reusing existing output channel)
             assert.strictEqual(mockOutputChannel.clear.callCount, 1);
@@ -313,29 +254,6 @@ suite('AppRunner', () => {
 
     suite('AppRunnerTreeDataProvider refresh command', () => {
         test('should load default commands when app_commands.jsonc file does not exist', async () => {
-            // Mock filesystem to simulate file not existing and handle PID file operations
-            const mockFiles = new Map();
-            sandbox.stub(fs, 'existsSync').callsFake((path: any) => {
-                const pathStr = String(path);
-                if (pathStr.includes('app_commands.jsonc')) {
-                    return false; // Simulate app_commands.jsonc doesn't exist
-                }
-                return mockFiles.has(pathStr);
-            });
-            sandbox.stub(fs, 'readFileSync').callsFake((path: any) => {
-                return mockFiles.get(String(path)) || '';
-            });
-            sandbox.stub(fs, 'writeFileSync').callsFake((path: any, data: any) => {
-                mockFiles.set(String(path), String(data));
-            });
-            sandbox.stub(fs, 'unlinkSync').callsFake((path: any) => {
-                mockFiles.delete(String(path));
-            });
-            sandbox.stub(fs, 'mkdirSync').returns(undefined);
-            
-            // Mock process.kill to avoid killing actual processes
-            sandbox.stub(process, 'kill').returns(true as any);
-            
             // Import after setting up mocks
             const { AppRunnerTreeDataProvider } = await import('../appRunner');
             const { getDefaultAppConfig } = await import('../appCommand');
@@ -371,33 +289,8 @@ suite('AppRunner', () => {
                     }
                 ]
             };
-            
-            // Mock filesystem to simulate file existing with custom content and handle PID file operations
-            const mockFiles = new Map();
-            sandbox.stub(fs, 'existsSync').callsFake((path: any) => {
-                const pathStr = String(path);
-                if (pathStr.includes('app_commands.jsonc')) {
-                    return true; // Simulate app_commands.jsonc exists
-                }
-                return mockFiles.has(pathStr);
-            });
-            sandbox.stub(fs, 'readFileSync').callsFake((path: any) => {
-                const pathStr = String(path);
-                if (pathStr.includes('app_commands.jsonc')) {
-                    return JSON.stringify(customConfig);
-                }
-                return mockFiles.get(pathStr) || '';
-            });
-            sandbox.stub(fs, 'writeFileSync').callsFake((path: any, data: any) => {
-                mockFiles.set(String(path), String(data));
-            });
-            sandbox.stub(fs, 'unlinkSync').callsFake((path: any) => {
-                mockFiles.delete(String(path));
-            });
-            sandbox.stub(fs, 'mkdirSync').returns(undefined);
-            
-            // Mock process.kill to avoid killing actual processes
-            sandbox.stub(process, 'kill').returns(true as any);
+
+            FsHelperMock.writeFileSync('/test/workspace/.vscode/app_commands.jsonc', JSON.stringify(customConfig));
             
             // Import after setting up mocks
             const { AppRunnerTreeDataProvider } = await import('../appRunner');

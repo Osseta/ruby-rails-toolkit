@@ -1,7 +1,7 @@
-import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { ProcessTracker } from './processTracker';
+import { FsHelper } from './fsHelper';
 
 export interface FileLockOptions {
     timeout?: number;
@@ -38,20 +38,20 @@ export class FileLockManager {
         while (Date.now() - startTime < timeout) {
             try {
                 // Try to create the lock file exclusively
-                const lockFileDescriptor = fs.openSync(lockFilePath, 'wx');
+                const lockFileDescriptor = FsHelper.openSync(lockFilePath, 'wx');
                 
                 // Write our process PID to the lock file
-                fs.writeSync(lockFileDescriptor, String(process.pid));
-                fs.closeSync(lockFileDescriptor);
+                FsHelper.writeSync(lockFileDescriptor, String(process.pid));
+                FsHelper.closeSync(lockFileDescriptor);
                 
                 // Mark as locked in our local state
                 this.activeLocks.set(commandCode, true);
                 
                 // If no pid file exists, create it (this will be the case for new commands)
-                if (!fs.existsSync(pidFilePath)) {
+                if (!FsHelper.existsSync(pidFilePath)) {
                     ProcessTracker.ensurePidDir();
                     // Create an empty pid file to be populated later
-                    fs.writeFileSync(pidFilePath, '', 'utf8');
+                    FsHelper.writeFileSync(pidFilePath, '', 'utf8');
                 }
                 
                 return;
@@ -59,7 +59,7 @@ export class FileLockManager {
                 if (error.code === 'EEXIST') {
                     // Lock file exists, check if the process that created it is still alive
                     try {
-                        const lockContent = fs.readFileSync(lockFilePath, 'utf8');
+                        const lockContent = FsHelper.readFileSync(lockFilePath, 'utf8');
                         const lockPid = parseInt(lockContent.trim());
                         
                         if (lockPid && lockPid !== process.pid) {
@@ -70,7 +70,7 @@ export class FileLockManager {
                             } catch {
                                 // Process is dead, remove stale lock file
                                 try {
-                                    fs.unlinkSync(lockFilePath);
+                                    FsHelper.unlinkSync(lockFilePath);
                                 } catch {
                                     // Lock file might have been removed by another process
                                 }
@@ -79,7 +79,7 @@ export class FileLockManager {
                         } else {
                             // Invalid or our own PID in lock file, remove it
                             try {
-                                fs.unlinkSync(lockFilePath);
+                                FsHelper.unlinkSync(lockFilePath);
                             } catch {
                                 // Lock file might have been removed by another process
                             }
@@ -88,7 +88,7 @@ export class FileLockManager {
                     } catch {
                         // Can't read lock file, assume it's stale and try to remove it
                         try {
-                            fs.unlinkSync(lockFilePath);
+                            FsHelper.unlinkSync(lockFilePath);
                         } catch {
                             // Lock file might have been removed by another process
                         }
@@ -117,16 +117,16 @@ export class FileLockManager {
             // Only remove the lock if we own it
             if (this.activeLocks.get(commandCode)) {
                 try {
-                    const lockContent = fs.readFileSync(lockFilePath, 'utf8');
+                    const lockContent = FsHelper.readFileSync(lockFilePath, 'utf8');
                     const lockPid = parseInt(lockContent.trim());
                     
                     if (lockPid === process.pid) {
-                        fs.unlinkSync(lockFilePath);
+                        FsHelper.unlinkSync(lockFilePath);
                     }
                 } catch {
                     // Lock file might not exist or be unreadable, try to remove anyway
                     try {
-                        fs.unlinkSync(lockFilePath);
+                        FsHelper.unlinkSync(lockFilePath);
                     } catch {
                         // Ignore errors when removing lock file
                     }
@@ -148,11 +148,11 @@ export class FileLockManager {
         const lockFilePath = this.getLockFilePath(commandCode);
         
         try {
-            if (!fs.existsSync(lockFilePath)) {
+            if (!FsHelper.existsSync(lockFilePath)) {
                 return false;
             }
             
-            const lockContent = fs.readFileSync(lockFilePath, 'utf8');
+            const lockContent = FsHelper.readFileSync(lockFilePath, 'utf8');
             const lockPid = parseInt(lockContent.trim());
             
             if (!lockPid) {
@@ -166,7 +166,7 @@ export class FileLockManager {
             } catch {
                 // Process is dead, remove stale lock
                 try {
-                    fs.unlinkSync(lockFilePath);
+                    FsHelper.unlinkSync(lockFilePath);
                 } catch {
                     // Ignore errors
                 }
