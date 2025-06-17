@@ -82,11 +82,12 @@ export class ProcessTracker {
         this.ensureStateDir();
         const stateFile = this.getStateFilePath(code);
         
-        // Read existing state to preserve workspace hash
+        // Read existing state to preserve workspace hash and additional forbidden vars
         const existingState = this.readState(code);
         const state = {
             terminationReason: reason,
-            workspaceHash: existingState.workspaceHash
+            workspaceHash: existingState.workspaceHash,
+            additionalForbiddenVars: existingState.additionalForbiddenVars
         };
         
         FsHelper.writeFileSync(stateFile, JSON.stringify(state), 'utf8');
@@ -117,11 +118,12 @@ export class ProcessTracker {
         this.ensureStateDir();
         const stateFile = this.getStateFilePath(code);
         
-        // Read existing state to preserve termination reason
+        // Read existing state to preserve termination reason and additional forbidden vars
         const existingState = this.readState(code);
         const state = {
             terminationReason: existingState.terminationReason || 'none',
-            workspaceHash: hash
+            workspaceHash: hash,
+            additionalForbiddenVars: existingState.additionalForbiddenVars
         };
         
         FsHelper.writeFileSync(stateFile, JSON.stringify(state), 'utf8');
@@ -143,27 +145,58 @@ export class ProcessTracker {
         const stateFile = this.getStateFilePath(code);
         
         if (FsHelper.existsSync(stateFile)) {
-            // Read existing state to preserve termination reason
+            // Read existing state to preserve termination reason and additional forbidden vars
             const existingState = this.readState(code);
             
-            if (existingState.terminationReason) {
-                // Preserve termination reason, only remove workspace hash
+            if (existingState.terminationReason || existingState.additionalForbiddenVars) {
+                // Preserve termination reason and additional forbidden vars, only remove workspace hash
                 const state = {
-                    terminationReason: existingState.terminationReason
+                    terminationReason: existingState.terminationReason,
+                    additionalForbiddenVars: existingState.additionalForbiddenVars
                     // workspaceHash is intentionally omitted
                 };
                 FsHelper.writeFileSync(stateFile, JSON.stringify(state), 'utf8');
             } else {
-                // No termination reason to preserve, delete the file
+                // Nothing to preserve, delete the file
                 FsHelper.unlinkSync(stateFile);
             }
         }
     }
 
     /**
+     * Sets the additional forbidden vars for a process.
+     */
+    static setAdditionalForbiddenVars(code: string, vars: string[]): void {
+        this.ensureStateDir();
+        const stateFile = this.getStateFilePath(code);
+        
+        // Read existing state to preserve other properties
+        const existingState = this.readState(code);
+        const state = {
+            terminationReason: existingState.terminationReason || 'none',
+            workspaceHash: existingState.workspaceHash,
+            additionalForbiddenVars: vars
+        };
+        
+        FsHelper.writeFileSync(stateFile, JSON.stringify(state), 'utf8');
+    }
+
+    /**
+     * Gets the additional forbidden vars for a process.
+     */
+    static getAdditionalForbiddenVars(code: string): string[] {
+        const state = this.readState(code);
+        return state.additionalForbiddenVars || [];
+    }
+
+    /**
      * Reads the state file for a process.
      */
-    private static readState(code: string): { terminationReason?: ProcessTerminationReason, workspaceHash?: string } {
+    private static readState(code: string): { 
+        terminationReason?: ProcessTerminationReason, 
+        workspaceHash?: string,
+        additionalForbiddenVars?: string[]
+    } {
         const stateFile = this.getStateFilePath(code);
         if (!FsHelper.existsSync(stateFile)) {
             return {};
@@ -219,6 +252,10 @@ export class ProcessTracker {
         const currentWorkspaceHash = workspaceHash();
         this.setWorkspaceHash(code, currentWorkspaceHash);
         logger.debug(`Set workspace hash for ${code}`, { workspaceHash: currentWorkspaceHash });
+        
+        // Store the additional forbidden vars for this process
+        this.setAdditionalForbiddenVars(code, additionalForbiddenVars);
+        logger.debug(`Set additional forbidden vars for ${code}`, { additionalForbiddenVars });
         
         // Create or reuse output channel
         let outputChannel = this.outputChannels.get(code);

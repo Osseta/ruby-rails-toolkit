@@ -152,6 +152,30 @@ suite('ProcessTracker', () => {
        assert.ok(ProcessTracker.isRunning(code));
     });
 
+    test('should save additional forbidden vars to state when spawning process', async function() {
+        const additionalForbiddenVars = ['TEST_VAR1', 'TEST_VAR2', 'CUSTOM_SETTING'];
+        
+        await ProcessHelper.spawnAndTrackSuccess(code, additionalForbiddenVars);
+        
+        // Verify that the additional forbidden vars were saved to state
+        const savedVars = ProcessTracker.getAdditionalForbiddenVars(code);
+        assert.deepStrictEqual(savedVars, additionalForbiddenVars);
+        
+        // Clean up
+        await ProcessTracker.stopProcess(code);
+    });
+
+    test('should save empty additional forbidden vars to state when none provided', async function() {
+        await ProcessHelper.spawnAndTrackSuccess(code);
+        
+        // Verify that empty array is saved when no additional vars provided
+        const savedVars = ProcessTracker.getAdditionalForbiddenVars(code);
+        assert.deepStrictEqual(savedVars, []);
+        
+        // Clean up
+        await ProcessTracker.stopProcess(code);
+    });
+
     test('isRunning returns false if no pid file', () => {
         assert.ok(!ProcessTracker.isRunning('NONEXISTENT'));
     });
