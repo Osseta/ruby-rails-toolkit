@@ -2,7 +2,7 @@
   "name": "ruby-rails-toolkit",
   "displayName": "Ruby & Rails Developer Toolkit",
   "description": "A toolkit for Ruby and Rails development with testing, debugging, and process management",
-  "version": "1.2.0",
+  "version": "2.0.0",
   "publisher": "osseta",
   "author": {
     "name": "Anthony Richardson",

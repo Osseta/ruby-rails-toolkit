@@ -16,6 +16,12 @@ A powerful VS Code extension for Ruby and Rails development featuring one-click 
 - **Custom Commands**: Configure any Ruby/shell commands via JSON
 - **Real-time Status**: Visual indicators for running/stopped/crashed processes
 
+### ⚙️ **Feature Management**
+- **Environment Configuration**: Toggle feature flags with checkbox controls
+- **Smart Environment Variables**: Enable/disable environment variable groups per feature
+- **Real-time Updates**: Changes take effect immediately for new processes
+- **Persistent State**: Feature states saved across VS Code sessions
+
 ## 🚀 Quick Start
 
 ### Testing with RSpec
@@ -29,6 +35,12 @@ A powerful VS Code extension for Ruby and Rails development featuring one-click 
 2. Start Rails server: Click ▶️ next to "Web Server"
 3. Debug running processes: Click 🔍 next to any Ruby process
 4. View logs: Click 📄 for dedicated output channels
+
+### Feature Management
+1. Open **Features** panel from sidebar (below App Runner)
+2. Enable/disable features: Click checkboxes to toggle feature states
+3. View feature details: Hover over items to see environment variable configurations
+4. Persistent settings: Feature states are automatically saved and restored
 
 ## ⚙️ Configuration
 
@@ -57,9 +69,37 @@ Create `.vscode/app_commands.jsonc` for custom commands:
       "command": "yarn dev",
       "commandType": "shell"
     }
+  ],
+  "features": [
+    {
+      "code": "DEBUG",
+      "name": "Debug Mode",
+      "description": "Enables debugging and verbose logging",
+      "environment": {
+        "whitelist": ["DEBUG=true", "VERBOSE=1", "LOG_LEVEL=debug"],
+      }
+    },
+    {
+      "code": "PERFORMANCE",
+      "name": "Performance Monitoring", 
+      "description": "Enables performance profiling and benchmarks",
+      "environment": {
+        "whitelist": ["PROFILE=true", "BENCHMARK=1"],
+      }
+    }
   ]
 }
 ```
+
+### Features Configuration
+The `features` array defines toggleable feature flags that control environment variables:
+
+- **`code`**: Unique identifier for the feature
+- **`name`**: Display name shown in the Features panel
+- **`description`**: Tooltip description explaining the feature's purpose  
+- **`environment.whitelist`**: Environment variables set when feature is enabled
+
+When a feature is enabled via checkbox, its whitelist environment variables are applied to new processes. When disabled, blacklist variables are applied instead.
 
 ### Settings
 - `rubyToolkit.automaticallyShowOutputForCommand`: Auto-show output (default: `true`)
@@ -79,6 +119,11 @@ Create `.vscode/app_commands.jsonc` for custom commands:
 - **⏹️ Stop**: Terminate running processes
 - **🔍 Debug**: Attach debugger to running Ruby processes  
 - **📄 Show Output**: View process logs with clickable file paths
+
+### Feature Controls
+- **☑️ Enable/Disable**: Check/uncheck boxes to toggle features
+- **🔄 Refresh**: Update features list from configuration
+- **ℹ️ Hover Info**: View environment variable details in tooltips
 
 ## 🐛 Troubleshooting
 
