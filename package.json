@@ -286,6 +286,15 @@
         }
       },
       {
+        "id": "appRunner.forbiddenVarsMismatch.foreground",
+        "description": "Foreground color for commands with forbidden vars mismatch",
+        "defaults": {
+          "dark": "#ff9800",
+          "light": "#f57c00",
+          "highContrast": "#ffab40"
+        }
+      },
+      {
         "id": "appRunner.debuggingActive.foreground",
         "description": "Foreground color for commands with active debugging",
         "defaults": {

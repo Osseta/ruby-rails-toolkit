@@ -476,4 +476,190 @@ suite('AppRunner', () => {
             assert.ok(!contextValueDebugging.includes('canDebug'), 'Should not have debug capability when debugging');
         });
     });
+
+    suite('TreeItem Description Tests', () => {
+        test('should show DEBUGGING description when debugActive is true and no feature mismatch', () => {
+            const testCommand: Command = {
+                description: 'Test Server',
+                command: 'rails server',
+                code: 'server',
+                commandType: 'ruby',
+            };
+
+            const debugActiveState: ProcessState = {
+                exists: true,
+                debugActive: true,
+                terminationReason: 'none',
+                hasOutputChannel: true,
+                isLocked: false,
+                forbiddenVarsMismatch: false,
+                workspaceHash: 'mock-hash-1234'
+            };
+
+            const treeItem = new AppCommandTreeItem(testCommand, debugActiveState);
+            
+            assert.strictEqual(treeItem.description, '(DEBUGGING)', 'Should show DEBUGGING description when debugActive is true');
+        });
+
+        test('should show FEATURE MISMATCH description when forbiddenVarsMismatch is true', () => {
+            const testCommand: Command = {
+                description: 'Test Server',
+                command: 'rails server',
+                code: 'server',
+                commandType: 'ruby',
+            };
+
+            const featureMismatchState: ProcessState = {
+                exists: true,
+                debugActive: false,
+                terminationReason: 'none',
+                hasOutputChannel: true,
+                isLocked: false,
+                forbiddenVarsMismatch: true,
+                workspaceHash: 'mock-hash-1234'
+            };
+
+            const treeItem = new AppCommandTreeItem(testCommand, featureMismatchState);
+            
+            assert.strictEqual(treeItem.description, '(FEATURE MISMATCH)', 'Should show FEATURE MISMATCH description when forbiddenVarsMismatch is true');
+        });
+
+        test('should prioritize FEATURE MISMATCH over DEBUGGING when both are true', () => {
+            const testCommand: Command = {
+                description: 'Test Server',
+                command: 'rails server',
+                code: 'server',
+                commandType: 'ruby',
+            };
+
+            const bothActiveState: ProcessState = {
+                exists: true,
+                debugActive: true,
+                terminationReason: 'none',
+                hasOutputChannel: true,
+                isLocked: false,
+                forbiddenVarsMismatch: true,
+                workspaceHash: 'mock-hash-1234'
+            };
+
+            const treeItem = new AppCommandTreeItem(testCommand, bothActiveState);
+            
+            assert.strictEqual(treeItem.description, '(FEATURE MISMATCH)', 'Should prioritize FEATURE MISMATCH over DEBUGGING when both are true');
+        });
+
+        test('should show CRASHED description when terminated with crash', () => {
+            const testCommand: Command = {
+                description: 'Test Server',
+                command: 'rails server',
+                code: 'server',
+                commandType: 'ruby',
+            };
+
+            const crashedState: ProcessState = {
+                exists: false,
+                debugActive: false,
+                terminationReason: 'crashed',
+                hasOutputChannel: true,
+                isLocked: false,
+                forbiddenVarsMismatch: false,
+                workspaceHash: 'mock-hash-1234'
+            };
+
+            const treeItem = new AppCommandTreeItem(testCommand, crashedState);
+            
+            assert.strictEqual(treeItem.description, '(CRASHED)', 'Should show CRASHED description when terminationReason is crashed');
+        });
+
+        test('should show DIFFERENT WORKSPACE description when workspace hash differs', () => {
+            const testCommand: Command = {
+                description: 'Test Server',
+                command: 'rails server',
+                code: 'server',
+                commandType: 'ruby',
+            };
+
+            const differentWorkspaceState: ProcessState = {
+                exists: true,
+                debugActive: false,
+                terminationReason: 'none',
+                hasOutputChannel: true,
+                isLocked: false,
+                forbiddenVarsMismatch: false,
+                workspaceHash: 'different-workspace-hash'
+            };
+
+            const treeItem = new AppCommandTreeItem(testCommand, differentWorkspaceState);
+            
+            assert.strictEqual(treeItem.description, '(DIFFERENT WORKSPACE)', 'Should show DIFFERENT WORKSPACE description when workspaceHash differs');
+        });
+
+        test('should have no description when process is not running and no special conditions', () => {
+            const testCommand: Command = {
+                description: 'Test Server',
+                command: 'rails server',
+                code: 'server',
+                commandType: 'ruby',
+            };
+
+            const normalState: ProcessState = {
+                exists: false,
+                debugActive: false,
+                terminationReason: 'none',
+                hasOutputChannel: false,
+                isLocked: false,
+                forbiddenVarsMismatch: false,
+                workspaceHash: 'mock-hash-1234'
+            };
+
+            const treeItem = new AppCommandTreeItem(testCommand, normalState);
+            
+            assert.strictEqual(treeItem.description, undefined, 'Should have no description when no special conditions apply');
+        });
+
+        test('should prioritize DIFFERENT WORKSPACE over FEATURE MISMATCH', () => {
+            const testCommand: Command = {
+                description: 'Test Server',
+                command: 'rails server',
+                code: 'server',
+                commandType: 'ruby',
+            };
+
+            const bothConditionsState: ProcessState = {
+                exists: true,
+                debugActive: false,
+                terminationReason: 'none',
+                hasOutputChannel: true,
+                isLocked: false,
+                forbiddenVarsMismatch: true,
+                workspaceHash: 'different-workspace-hash'
+            };
+
+            const treeItem = new AppCommandTreeItem(testCommand, bothConditionsState);
+            
+            assert.strictEqual(treeItem.description, '(DIFFERENT WORKSPACE)', 'Should prioritize DIFFERENT WORKSPACE over FEATURE MISMATCH');
+        });
+
+        test('should prioritize DIFFERENT WORKSPACE over all other status messages', () => {
+            const testCommand: Command = {
+                description: 'Test Server',
+                command: 'rails server',
+                code: 'server',
+                commandType: 'ruby',
+            };
+
+            const allConditionsState: ProcessState = {
+                exists: true,
+                debugActive: true,
+                terminationReason: 'none',
+                hasOutputChannel: true,
+                isLocked: false,
+                forbiddenVarsMismatch: true,
+                workspaceHash: 'different-workspace-hash'
+            };
+
+            const treeItem = new AppCommandTreeItem(testCommand, allConditionsState);
+            
+            assert.strictEqual(treeItem.description, '(DIFFERENT WORKSPACE)', 'Should prioritize DIFFERENT WORKSPACE over all other status messages');
+        });
+    });
 });

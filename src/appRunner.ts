@@ -42,6 +42,8 @@ export class AppCommandTreeItem extends vscode.TreeItem {
         // Add red styling for crashed commands
         if (isDifferentWorkspace) {
             this.description = '(DIFFERENT WORKSPACE)';
+        } else if (safeState.exists && safeState.forbiddenVarsMismatch) {
+            this.description = '(FEATURE MISMATCH)';
         } else if (safeState.debugActive) {
             // Use a blue description to indicate active debugging
             this.description = '(DEBUGGING)';
@@ -63,6 +65,8 @@ export class AppCommandTreeItem extends vscode.TreeItem {
             if (isDifferentWorkspace) {
                 // Orange icon for processes from different workspace
                 this.iconPath = new (vscode as any).ThemeIcon('circle-large-filled', new vscode.ThemeColor('appRunner.differentWorkspace.foreground'));
+            } else if (safeState.forbiddenVarsMismatch) {
+                this.iconPath = new (vscode as any).ThemeIcon('circle-large-filled', new vscode.ThemeColor('appRunner.forbiddenVarsMismatch.foreground'));
             } else if (safeState.debugActive) {
                 // Blue icon for processes with active debugging
                 this.iconPath = new (vscode as any).ThemeIcon('circle-large-filled', new vscode.ThemeColor('appRunner.debuggingActive.foreground'));
