@@ -3,7 +3,7 @@ import { ProcessTracker } from '../processTracker';
 import * as sinon from 'sinon';
 import * as utils from '../utils';
 
-suite('Process Termination Reason Tests', () => {
+suite('Process Persisted State Tests', () => {
     const testCode = 'TEST_PROCESS';
     
     setup(() => {
