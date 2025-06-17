@@ -23,6 +23,7 @@ export type ProcessState = {
   hasOutputChannel: boolean;
   isLocked: boolean;
   workspaceHash?: string;
+  forbiddenVarsMismatch: boolean;
 };
 
 export const defaultProcessState: ProcessState = {
@@ -32,6 +33,7 @@ export const defaultProcessState: ProcessState = {
   hasOutputChannel: false,
   isLocked: false,
   workspaceHash: undefined,
+  forbiddenVarsMismatch: false,
 };
 
 export type Command = {

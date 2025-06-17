@@ -93,8 +93,9 @@ suite('AppRunner', () => {
                 debugActive: false,
                 terminationReason: 'none',
                 hasOutputChannel: false,
-            isLocked: false           
-           };
+                isLocked: false,
+                forbiddenVarsMismatch: false
+            };
 
             const item = new AppCommandTreeItem(testCommand, state);
             assert.strictEqual(item.contextValue, 'canRun');
@@ -106,7 +107,9 @@ suite('AppRunner', () => {
                 debugActive: false,
                 terminationReason: 'crashed',
                 hasOutputChannel: true,
-            isLocked: false            };
+                isLocked: false,
+                forbiddenVarsMismatch: false
+            };
 
             const item = new AppCommandTreeItem(testCommand, state);
             assert.strictEqual(item.contextValue, 'canShowOutputCrashed,canShowOutput');
@@ -118,7 +121,9 @@ suite('AppRunner', () => {
                 debugActive: false,
                 terminationReason: 'none',
                 hasOutputChannel: true,
-            isLocked: false            };
+                isLocked: false,
+                forbiddenVarsMismatch: false
+            };
 
             const item = new AppCommandTreeItem(testCommand, state);
             assert.strictEqual(item.contextValue, 'canShowOutputRunning,canStop,canShowOutput');
@@ -134,7 +139,9 @@ suite('AppRunner', () => {
                 debugActive: false,
                 terminationReason: 'none',
                 hasOutputChannel: true,
-            isLocked: false            };
+                isLocked: false,
+                forbiddenVarsMismatch: false
+            };
 
             const item = new AppCommandTreeItem(rubyCommand, state);
             assert.strictEqual(item.contextValue, 'canShowOutputRunning,canStop,canDebug,canShowOutput');
@@ -146,7 +153,9 @@ suite('AppRunner', () => {
                 debugActive: false,
                 terminationReason: 'crashed',
                 hasOutputChannel: false,
-            isLocked: false            };
+                forbiddenVarsMismatch: false,
+                isLocked: false
+            };
 
             const item = new AppCommandTreeItem(testCommand, state);
             assert.strictEqual(item.contextValue, '');
@@ -162,6 +171,7 @@ suite('AppRunner', () => {
                 debugActive: true,
                 terminationReason: 'none',
                 hasOutputChannel: true,
+                forbiddenVarsMismatch: false,
             isLocked: false            };
 
             const item = new AppCommandTreeItem(rubyCommand, state);
@@ -325,6 +335,7 @@ suite('AppRunner', () => {
                 terminationReason: 'none',
                 hasOutputChannel: true,
                 isLocked: false,
+                forbiddenVarsMismatch: false,
                 workspaceHash: 'mock-hash-1234'
             };
 
@@ -353,6 +364,7 @@ suite('AppRunner', () => {
                 terminationReason: 'none',
                 hasOutputChannel: true,
                 isLocked: false,
+                forbiddenVarsMismatch: false,
                 workspaceHash: 'mock-hash-1234'
             };
 
@@ -381,6 +393,7 @@ suite('AppRunner', () => {
                 terminationReason: 'none',
                 hasOutputChannel: true,
                 isLocked: false,
+                forbiddenVarsMismatch: false,
                 workspaceHash: 'mock-hash-1234'
             };
 
@@ -409,6 +422,7 @@ suite('AppRunner', () => {
                 terminationReason: 'none',
                 hasOutputChannel: false,
                 isLocked: false,
+                forbiddenVarsMismatch: false,
                 workspaceHash: undefined
             };
 
@@ -437,6 +451,7 @@ suite('AppRunner', () => {
                 terminationReason: 'none',
                 hasOutputChannel: true,
                 isLocked: false,
+                forbiddenVarsMismatch: false,
                 workspaceHash: 'mock-hash-1234'
             };
 
@@ -446,6 +461,7 @@ suite('AppRunner', () => {
                 terminationReason: 'none',
                 hasOutputChannel: true,
                 isLocked: false,
+                forbiddenVarsMismatch: false,
                 workspaceHash: 'mock-hash-1234'
             };
 

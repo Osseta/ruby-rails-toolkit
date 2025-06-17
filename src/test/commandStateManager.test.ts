@@ -384,4 +384,165 @@ suite('CommandStateManager Tests', () => {
             assert.ok(onUpdateCallback.called, 'onUpdate should be called when debugActive state changes');
         });
     });
+
+    suite('Forbidden Vars Mismatch Tests', () => {
+        let getFeatureStateManagerStub: sinon.SinonStub;
+        let loadAppConfigStub: sinon.SinonStub;
+        let getAdditionalForbiddenVarsStub: sinon.SinonStub;
+
+        setup(() => {
+            // Import the functions to stub them
+            const appCommand = require('../appCommand');
+            getFeatureStateManagerStub = sandbox.stub(appCommand, 'getFeatureStateManager');
+            loadAppConfigStub = sandbox.stub(appCommand, 'loadAppConfig');
+            getAdditionalForbiddenVarsStub = sandbox.stub(ProcessTracker, 'getAdditionalForbiddenVars');
+        });
+
+        test('should detect no mismatch when forbidden vars are identical', async () => {
+            // Setup: Mock feature state manager to return specific forbidden vars
+            const mockFeatureStateManager = {
+                getForbiddenEnvironmentVariables: sandbox.stub().returns(['VAR1', 'VAR2'])
+            };
+            getFeatureStateManagerStub.returns(mockFeatureStateManager);
+            loadAppConfigStub.returns({ features: [] });
+            
+            // Mock ProcessTracker to return same vars as were stored
+            getAdditionalForbiddenVarsStub.withArgs('TEST_CMD_1').returns(['VAR1', 'VAR2']);
+            
+            // Mock process is running
+            isRunningStub.withArgs('TEST_CMD_1').returns(true);
+            
+            // Act: Create manager and let it poll
+            manager = new CommandStateManager({ onUpdate: onUpdateCallback }, mockCommands);
+            await new Promise(resolve => setTimeout(resolve, 10));
+            
+            // Assert: Verify no mismatch detected
+            const state = manager.getButtonState('TEST_CMD_1');
+            assert.strictEqual(state.forbiddenVarsMismatch, false, 'Should not detect mismatch when vars are identical');
+        });
+
+        test('should detect mismatch when forbidden vars are different', async () => {
+            // Setup: Mock feature state manager to return different forbidden vars
+            const mockFeatureStateManager = {
+                getForbiddenEnvironmentVariables: sandbox.stub().returns(['VAR1', 'VAR2', 'VAR3'])
+            };
+            getFeatureStateManagerStub.returns(mockFeatureStateManager);
+            loadAppConfigStub.returns({ features: [] });
+            
+            // Mock ProcessTracker to return different vars than current
+            getAdditionalForbiddenVarsStub.withArgs('TEST_CMD_1').returns(['VAR1', 'VAR2']);
+            
+            // Mock process is running
+            isRunningStub.withArgs('TEST_CMD_1').returns(true);
+            
+            // Act: Create manager and let it poll
+            manager = new CommandStateManager({ onUpdate: onUpdateCallback }, mockCommands);
+            await new Promise(resolve => setTimeout(resolve, 10));
+            
+            // Assert: Verify mismatch detected
+            const state = manager.getButtonState('TEST_CMD_1');
+            assert.strictEqual(state.forbiddenVarsMismatch, true, 'Should detect mismatch when vars are different');
+        });
+
+        test('should detect mismatch when forbidden vars order is different', async () => {
+            // Setup: Mock feature state manager to return vars in different order
+            const mockFeatureStateManager = {
+                getForbiddenEnvironmentVariables: sandbox.stub().returns(['VAR2', 'VAR1'])
+            };
+            getFeatureStateManagerStub.returns(mockFeatureStateManager);
+            loadAppConfigStub.returns({ features: [] });
+            
+            // Mock ProcessTracker to return vars in different order
+            getAdditionalForbiddenVarsStub.withArgs('TEST_CMD_1').returns(['VAR1', 'VAR2']);
+            
+            // Mock process is running
+            isRunningStub.withArgs('TEST_CMD_1').returns(true);
+            
+            // Act: Create manager and let it poll
+            manager = new CommandStateManager({ onUpdate: onUpdateCallback }, mockCommands);
+            await new Promise(resolve => setTimeout(resolve, 10));
+            
+            // Assert: Verify no mismatch detected (order should not matter)
+            const state = manager.getButtonState('TEST_CMD_1');
+            assert.strictEqual(state.forbiddenVarsMismatch, false, 'Should not detect mismatch when only order is different');
+        });
+
+        test('should not check mismatch for stopped processes', async () => {
+            // Setup: Mock feature state manager
+            const mockFeatureStateManager = {
+                getForbiddenEnvironmentVariables: sandbox.stub().returns(['VAR1', 'VAR2', 'VAR3'])
+            };
+            getFeatureStateManagerStub.returns(mockFeatureStateManager);
+            loadAppConfigStub.returns({ features: [] });
+            
+            // Mock ProcessTracker to return different vars
+            getAdditionalForbiddenVarsStub.withArgs('TEST_CMD_1').returns(['VAR1', 'VAR2']);
+            
+            // Mock process is NOT running
+            isRunningStub.withArgs('TEST_CMD_1').returns(false);
+            
+            // Act: Create manager and let it poll
+            manager = new CommandStateManager({ onUpdate: onUpdateCallback }, mockCommands);
+            await new Promise(resolve => setTimeout(resolve, 10));
+            
+            // Assert: Verify no mismatch checked for stopped process
+            const state = manager.getButtonState('TEST_CMD_1');
+            assert.strictEqual(state.forbiddenVarsMismatch, false, 'Should not check mismatch for stopped processes');
+        });
+
+        test('should handle missing feature state manager gracefully', async () => {
+            // Setup: Mock feature state manager to return undefined
+            getFeatureStateManagerStub.returns(undefined);
+            
+            // Mock ProcessTracker to return empty vars (consistent with missing feature state manager)
+            getAdditionalForbiddenVarsStub.withArgs('TEST_CMD_1').returns([]);
+            
+            // Mock process is running
+            isRunningStub.withArgs('TEST_CMD_1').returns(true);
+            
+            // Act: Create manager and let it poll
+            manager = new CommandStateManager({ onUpdate: onUpdateCallback }, mockCommands);
+            await new Promise(resolve => setTimeout(resolve, 10));
+            
+            // Assert: Verify no mismatch when feature state manager is unavailable
+            const state = manager.getButtonState('TEST_CMD_1');
+            assert.strictEqual(state.forbiddenVarsMismatch, false, 'Should handle missing feature state manager gracefully');
+        });
+
+        test('should detect state change when forbidden vars mismatch changes', async () => {
+            // Setup: Mock feature state manager and initial state
+            const mockFeatureStateManager = {
+                getForbiddenEnvironmentVariables: sandbox.stub()
+            };
+            getFeatureStateManagerStub.returns(mockFeatureStateManager);
+            loadAppConfigStub.returns({ features: [] });
+            getAdditionalForbiddenVarsStub.withArgs('TEST_CMD_1').returns(['VAR1', 'VAR2']);
+            isRunningStub.withArgs('TEST_CMD_1').returns(true);
+            
+            // Initially return same vars (no mismatch)
+            mockFeatureStateManager.getForbiddenEnvironmentVariables.returns(['VAR1', 'VAR2']);
+            
+            // Act: Create manager and let it poll
+            manager = new CommandStateManager({ onUpdate: onUpdateCallback }, mockCommands);
+            await new Promise(resolve => setTimeout(resolve, 10));
+            
+            // Verify initial state (no mismatch)
+            let state = manager.getButtonState('TEST_CMD_1');
+            assert.strictEqual(state.forbiddenVarsMismatch, false, 'Initial state should have no mismatch');
+            
+            // Reset callback spy
+            onUpdateCallback.resetHistory();
+            
+            // Change current vars to create mismatch
+            mockFeatureStateManager.getForbiddenEnvironmentVariables.returns(['VAR1', 'VAR2', 'VAR3']);
+            
+            // Force update
+            await manager.forceUpdate();
+            
+            // Assert: Verify state changed and callback was called
+            state = manager.getButtonState('TEST_CMD_1');
+            assert.strictEqual(state.forbiddenVarsMismatch, true, 'Should detect mismatch after vars change');
+            assert.ok(onUpdateCallback.called, 'onUpdate should be called when forbidden vars mismatch changes');
+        });
+    });
 });

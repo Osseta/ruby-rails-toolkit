@@ -45,6 +45,7 @@ suite('Crashed Command Display Tests', () => {
             debugActive: false,
             terminationReason: 'crashed',
             hasOutputChannel: true,
+            forbiddenVarsMismatch: false,
             isLocked: false
         };
 
@@ -67,6 +68,7 @@ suite('Crashed Command Display Tests', () => {
             debugActive: false,
             terminationReason: 'none',
             hasOutputChannel: false,
+            forbiddenVarsMismatch: false,
             isLocked: false
         };
 
@@ -93,6 +95,7 @@ suite('Crashed Command Display Tests', () => {
             debugActive: false,
             terminationReason: 'crashed',
             hasOutputChannel: true,
+            forbiddenVarsMismatch: false,
             isLocked: false
         };
 
@@ -116,6 +119,7 @@ suite('Crashed Command Display Tests', () => {
             debugActive: false,
             terminationReason: 'none',
             hasOutputChannel: true,
+            forbiddenVarsMismatch: false,
             isLocked: false
         };
 
@@ -138,6 +142,7 @@ suite('Crashed Command Display Tests', () => {
             debugActive: false,
             terminationReason: 'none',
             hasOutputChannel: false,
+            forbiddenVarsMismatch: false,
             isLocked: false
         };
 
@@ -176,6 +181,7 @@ suite('Different Workspace Display Tests', () => {
             terminationReason: 'none',
             hasOutputChannel: true,
             isLocked: false,
+            forbiddenVarsMismatch: false,
             workspaceHash: 'different-workspace-hash'
         };
 
@@ -202,6 +208,7 @@ suite('Different Workspace Display Tests', () => {
             terminationReason: 'none',
             hasOutputChannel: true,
             isLocked: false,
+            forbiddenVarsMismatch: false,
             workspaceHash: 'current-workspace-hash'
         };
 
@@ -229,6 +236,7 @@ suite('Different Workspace Display Tests', () => {
             terminationReason: 'none',
             hasOutputChannel: false,
             isLocked: false,
+            forbiddenVarsMismatch: false,
             workspaceHash: 'different-workspace-hash'
         };
 
@@ -256,6 +264,7 @@ suite('Different Workspace Display Tests', () => {
             terminationReason: 'none',
             hasOutputChannel: true,
             isLocked: false,
+            forbiddenVarsMismatch: false,
             workspaceHash: 'different-workspace-hash'
         };
 
@@ -287,6 +296,7 @@ suite('Different Workspace Display Tests', () => {
             terminationReason: 'none',
             hasOutputChannel: true,
             isLocked: false,
+            forbiddenVarsMismatch: false,
             workspaceHash: 'current-workspace-hash'
         };
 
@@ -316,6 +326,7 @@ suite('Different Workspace Display Tests', () => {
             terminationReason: 'none',
             hasOutputChannel: true,
             isLocked: false,
+            forbiddenVarsMismatch: false,
             workspaceHash: 'different-workspace-hash'
         };
 
@@ -345,6 +356,7 @@ suite('Different Workspace Display Tests', () => {
             terminationReason: 'none',
             hasOutputChannel: true,
             isLocked: false,
+            forbiddenVarsMismatch: false,
             workspaceHash: 'current-workspace-hash'
         };
 
@@ -374,6 +386,7 @@ suite('Different Workspace Display Tests', () => {
             terminationReason: 'none',
             hasOutputChannel: true,
             isLocked: false,
+            forbiddenVarsMismatch: false,
             workspaceHash: 'different-workspace-hash'
         };
 
@@ -403,6 +416,7 @@ suite('Different Workspace Display Tests', () => {
             terminationReason: 'none',
             hasOutputChannel: true,
             isLocked: false,
+            forbiddenVarsMismatch: false,
             workspaceHash: 'current-workspace-hash'
         };
 
@@ -431,7 +445,8 @@ suite('Different Workspace Display Tests', () => {
             debugActive: false,
             terminationReason: 'none',
             hasOutputChannel: true,
-            isLocked: false
+            isLocked: false,
+            forbiddenVarsMismatch: false,            
             // workspaceHash is undefined
         };
 
@@ -477,6 +492,7 @@ suite('Different Workspace Display Tests', () => {
             terminationReason: 'crashed',
             hasOutputChannel: true,
             isLocked: false,
+            forbiddenVarsMismatch: false,
             workspaceHash: 'different-workspace-hash'
         };
 

@@ -5,6 +5,7 @@ import type { ProcessState } from './types';
 import { defaultProcessState } from './types';
 import { workspaceHash } from './utils';
 import { getLogger } from './logger';
+import { getFeatureStateManager, loadAppConfig } from './appCommand';
 
 /**
  * Manages the enabled/disabled state of command buttons in the AppRunner TreeView.
@@ -56,6 +57,9 @@ export class CommandStateManager {
             // Check if there's an active debug session for this command
             const debugActive = this.isDebugSessionActive(cmd.code);
             
+            // Check if forbidden vars have changed since process was started
+            const forbiddenVarsMismatch = exists ? this.hasForbiddenVarsMismatch(cmd.code) : false;
+            
             // If termination reason is crashed but there's no output channel, change to none
             if (terminationReason === 'crashed' && !hasOutputChannel) {
                 this.logger.info(`Command ${cmd.code}: changing termination reason from 'crashed' to 'none' (no output channel)`);
@@ -68,7 +72,8 @@ export class CommandStateManager {
                 terminationReason,
                 hasOutputChannel,
                 isLocked,
-                workspaceHash: processWorkspaceHash
+                workspaceHash: processWorkspaceHash,
+                forbiddenVarsMismatch
             })) { hasChanged = true; }
         });
         if (hasChanged) {
@@ -89,7 +94,8 @@ export class CommandStateManager {
             previousState.exists !== state.exists ||
             previousState.debugActive !== state.debugActive ||
             previousState.terminationReason !== state.terminationReason ||
-            previousState.isLocked !== state.isLocked);
+            previousState.isLocked !== state.isLocked ||
+            previousState.forbiddenVarsMismatch !== state.forbiddenVarsMismatch);
 
         if (stateChanged) {
             this.logger.debug(`Command ${code} state changed`, {
@@ -185,5 +191,48 @@ export class CommandStateManager {
      */
     public getDebugSession(commandCode: string): vscode.DebugSession | undefined {
         return this.activeDebugSessions.get(commandCode);
+    }
+
+    /**
+     * Gets additional forbidden environment variables based on feature states.
+     * @returns Array of environment variable names to exclude from process spawning
+     */
+    private getCurrentAdditionalForbiddenVars(): string[] {
+        const featureStateManager = getFeatureStateManager();
+        if (!featureStateManager) {
+            return [];
+        }
+
+        const config = loadAppConfig();
+        const features = config.features || [];
+        
+        return featureStateManager.getForbiddenEnvironmentVariables(features);
+    }
+
+    /**
+     * Compares current additional forbidden vars with those used when process was started.
+     * @param code Command code
+     * @returns true if forbidden vars have changed since process start
+     */
+    private hasForbiddenVarsMismatch(code: string): boolean {
+        const currentForbiddenVars = this.getCurrentAdditionalForbiddenVars();
+        const storedForbiddenVars = ProcessTracker.getAdditionalForbiddenVars(code);
+        
+        // Compare arrays - they mismatch if different lengths or different elements
+        if (currentForbiddenVars.length !== storedForbiddenVars.length) {
+            return true;
+        }
+        
+        // Sort both arrays to ensure consistent comparison
+        const currentSorted = [...currentForbiddenVars].sort();
+        const storedSorted = [...storedForbiddenVars].sort();
+        
+        for (let i = 0; i < currentSorted.length; i++) {
+            if (currentSorted[i] !== storedSorted[i]) {
+                return true;
+            }
+        }
+        
+        return false;
     }
 }

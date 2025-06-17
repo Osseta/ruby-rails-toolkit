@@ -53,6 +53,7 @@ suite('QuickPick Logic Tests', () => {
                 debugActive: false,
                 terminationReason: 'none',
                 hasOutputChannel: false,
+                forbiddenVarsMismatch: false,
             isLocked: false            };
 
             const rubyItem = new AppCommandTreeItem(rubyCommand, state);
@@ -69,6 +70,7 @@ suite('QuickPick Logic Tests', () => {
                 debugActive: false,
                 terminationReason: 'crashed',
                 hasOutputChannel: true,
+                forbiddenVarsMismatch: false,
             isLocked: false            };
 
             const stateWithoutOutput: ProcessState = {
@@ -76,6 +78,7 @@ suite('QuickPick Logic Tests', () => {
                 debugActive: false,
                 terminationReason: 'crashed',
                 hasOutputChannel: false,
+                forbiddenVarsMismatch: false,
             isLocked: false            };
 
             const itemWithOutput = new AppCommandTreeItem(rubyCommand, stateWithOutput);
@@ -93,6 +96,7 @@ suite('QuickPick Logic Tests', () => {
                 debugActive: false,
                 terminationReason: 'none',
                 hasOutputChannel: true,
+                forbiddenVarsMismatch: false,
             isLocked: false            };
 
             const stateWithoutOutput: ProcessState = {
@@ -100,6 +104,7 @@ suite('QuickPick Logic Tests', () => {
                 debugActive: false,
                 terminationReason: 'none',
                 hasOutputChannel: false,
+                forbiddenVarsMismatch: false,
             isLocked: false            };
 
             const itemWithOutput = new AppCommandTreeItem(rubyCommand, stateWithOutput);
@@ -117,14 +122,18 @@ suite('QuickPick Logic Tests', () => {
                 debugActive: true,
                 terminationReason: 'none',
                 hasOutputChannel: true,
-            isLocked: false            };
+                forbiddenVarsMismatch: false,
+                isLocked: false
+            };
 
             const stateWithoutOutput: ProcessState = {
                 exists: true,
                 debugActive: true,
                 terminationReason: 'none',
                 hasOutputChannel: false,
-            isLocked: false            };
+                forbiddenVarsMismatch: false,
+                isLocked: false
+            };
 
             const itemWithOutput = new AppCommandTreeItem(rubyCommand, stateWithOutput);
             const itemWithoutOutput = new AppCommandTreeItem(rubyCommand, stateWithoutOutput);
@@ -163,6 +172,7 @@ suite('QuickPick Logic Tests', () => {
             debugActive: false,
             terminationReason: 'crashed',
             hasOutputChannel: true,
+            forbiddenVarsMismatch: false,
             isLocked: false        };
 
         const crashedItem = new AppCommandTreeItem(rubyCommand, crashedState);
