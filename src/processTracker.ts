@@ -561,14 +561,6 @@ export class ProcessTracker {
     }
 
     /**
-     * Clears all workspace hashes. Used during cleanup.
-     */
-    static clearAllWorkspaceHashes(): void {
-        // This method is now a no-op since workspace hashes are stored in state files
-        // and cleared automatically when clearAllTerminationReasons() is called
-    }
-
-    /**
      * Disposes of all output channels.
      */
     static disposeAllOutputChannels(): void {

@@ -2,8 +2,6 @@ import * as assert from 'assert';
 import * as sinon from 'sinon';
 import * as vscode from 'vscode';
 import { isSpecLine, activate, deactivate } from '../rspecRunner';
-import { RdbgSocketPath } from '../types';
-import * as utils from '../utils';
 
 suite('Rspec Runner Test Suite', () => {
 	let utils: any;

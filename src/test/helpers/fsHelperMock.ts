@@ -362,6 +362,7 @@ export class FsHelperMock {
      * @param sandbox Optional sinon sandbox, defaults to sinon if not provided
      */
     static mock(sandbox?: sinon.SinonSandbox): void {
+        this.reset();
         const stubber = sandbox || sinon;
         
         stubber.stub(FsHelper, 'existsSync').callsFake((filePath: string) => {

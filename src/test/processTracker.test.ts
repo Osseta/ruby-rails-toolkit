@@ -3,7 +3,7 @@ import { ProcessTracker } from '../processTracker';
 import * as vscode from 'vscode';
 import * as sinon from 'sinon';
 import * as utils from '../utils';
-import { spawnAndTrackSuccess } from './helpers/processHelpers';
+import { ProcessHelper } from './helpers/processHelpers';
 import { FsHelperMock } from './helpers/fsHelperMock';
 
 suite('ProcessTracker', () => {
@@ -17,9 +17,9 @@ suite('ProcessTracker', () => {
 
         // Reset the mock filesystem
         FsHelperMock.reset();
+
         FsHelperMock.mock(sandbox);
-        // Mock process.kill to avoid killing actual processes
-        sandbox.stub(process, 'kill').returns(true as any);
+        ProcessHelper.mock(sandbox);
 
         // Mock workspaceHash to return a predictable value
         sandbox.stub(utils, 'workspaceHash').returns('mock-hash-1234');
@@ -28,26 +28,6 @@ suite('ProcessTracker', () => {
         if (!vscode.window) {
             (vscode as any).window = {};
         }
-        
-        // Mock vscode.window.createOutputChannel
-        const mockOutputChannel = {
-            show: sandbox.stub(),
-            append: sandbox.stub(),
-            appendLine: sandbox.stub(),
-            dispose: sandbox.stub(),
-            clear: sandbox.stub(),
-            // Add LogOutputChannel methods
-            trace: sandbox.stub(),
-            debug: sandbox.stub(),
-            info: sandbox.stub(),
-            warn: sandbox.stub(),
-            error: sandbox.stub(),
-            logLevel: 1 // vscode.LogLevel.Info
-        };
-        if (!vscode.window.createOutputChannel) {
-            (vscode.window as any).createOutputChannel = () => mockOutputChannel;
-        }
-        sandbox.stub(vscode.window, 'createOutputChannel').returns(mockOutputChannel as any);
 
         // Mock vscode.window.showErrorMessage
         if (!vscode.window.showErrorMessage) {
@@ -93,15 +73,15 @@ suite('ProcessTracker', () => {
     });
 
     test('spawnAndTrack creates a pid file and isRunning returns true', async function() {
-        await spawnAndTrackSuccess(code);
-        
+        await ProcessHelper.spawnAndTrackSuccess(code);
+
         // Process should be ready now
         assert.ok(FsHelperMock.existsSync(pidFile));
         assert.ok(ProcessTracker.isRunning(code));
     });
 
     test('stopProcess kills process and removes pid file', async function() {
-      await spawnAndTrackSuccess(code);
+      await ProcessHelper.spawnAndTrackSuccess(code);
 
       // Process should be ready now
       assert.ok(FsHelperMock.existsSync(pidFile));
@@ -123,7 +103,7 @@ suite('ProcessTracker', () => {
     });
 
     test('getRunningPid returns PID for running process', async function() {
-      const { child } = await spawnAndTrackSuccess(code);
+      const { child } = await ProcessHelper.spawnAndTrackSuccess(code);
 
       const pid = ProcessTracker.getRunningPid(code);
       assert.strictEqual(pid, child.pid);
@@ -148,7 +128,7 @@ suite('ProcessTracker', () => {
         process.env.ALLOWED_VAR = 'should-remain';
         
         try {
-            const { env: capturedEnv } = await spawnAndTrackSuccess(code, additionalForbiddenVars);
+            const { env: capturedEnv } = await ProcessHelper.spawnAndTrackSuccess(code, additionalForbiddenVars);
 
             // Verify that additional forbidden vars were removed
             assert.ok(!capturedEnv.hasOwnProperty('CUSTOM_VAR1'), 'CUSTOM_VAR1 should be removed');
@@ -166,7 +146,7 @@ suite('ProcessTracker', () => {
     });
 
     test('should handle empty additional forbidden variables array', async function() {
-        await spawnAndTrackSuccess(code);
+        await ProcessHelper.spawnAndTrackSuccess(code);
 
         // Should work normally with empty array
        assert.ok(ProcessTracker.isRunning(code));
@@ -766,7 +746,7 @@ Processing file:///mock/workspace/src/component.tsx:50`;
             (ProcessTracker as any).outputChannels.set(code, mockOutputChannel);
 
             // Spawn and track a process (this should reuse the existing output channel)
-            await spawnAndTrackSuccess(code);
+            await ProcessHelper.spawnAndTrackSuccess(code);
 
             // Verify the configuration was checked and clear was called
             assert.strictEqual((vscode.workspace.getConfiguration as any).callCount, 1);
@@ -795,7 +775,7 @@ Processing file:///mock/workspace/src/component.tsx:50`;
             (ProcessTracker as any).outputChannels.set(code, mockOutputChannel);
 
             // Spawn and track a process (this should reuse the existing output channel)
-            await spawnAndTrackSuccess(code);
+            await ProcessHelper.spawnAndTrackSuccess(code);
 
             // Verify the configuration was checked but clear was NOT called
             assert.strictEqual((vscode.workspace.getConfiguration as any).callCount, 1);
@@ -834,7 +814,7 @@ Processing file:///mock/workspace/src/component.tsx:50`;
             (vscode.window.createOutputChannel as any).returns(mockOutputChannel);
 
             // Spawn and track a process (this should create a new output channel)
-            await spawnAndTrackSuccess(code);
+            await ProcessHelper.spawnAndTrackSuccess(code);
 
             // Verify a new output channel was created and clear was NOT called (since it's new)
             assert.strictEqual((vscode.window.createOutputChannel as any).callCount, 1);

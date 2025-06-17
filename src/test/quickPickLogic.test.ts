@@ -2,7 +2,6 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 import * as sinon from 'sinon';
 import { AppCommandTreeItem } from '../appRunner';
-import { ProcessTracker } from '../processTracker';
 import type { Command, ProcessState } from '../types';
 import * as utils from '../utils';
 

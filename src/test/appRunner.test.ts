@@ -10,7 +10,7 @@ import { ProcessTracker } from '../processTracker';
 import { AppCommandTreeItem } from '../appRunner';
 import type { Command, ProcessState } from '../types';
 import * as utils from '../utils';
-import { spawnAndTrackSuccess } from './helpers/processHelpers';
+import { ProcessHelper } from './helpers/processHelpers';
 import { FsHelperMock } from './helpers/fsHelperMock';
 
 suite('AppRunner', () => {
@@ -192,7 +192,7 @@ suite('AppRunner', () => {
 
         test('should return true when output channel exists', async () => {
             // Spawn a process to create the output channel
-            await spawnAndTrackSuccess('TEST_HAS_OUTPUT', [], sandbox);
+            await ProcessHelper.spawnAndTrackSuccess('TEST_HAS_OUTPUT', [], sandbox);
 
             assert.strictEqual(ProcessTracker.hasOutputChannel('TEST_HAS_OUTPUT'), true);
             
@@ -206,13 +206,13 @@ suite('AppRunner', () => {
 
         test('should return output channel when it exists', async () => {
             // Spawn a process to create the output channel
-            await spawnAndTrackSuccess('TEST_GET_OUTPUT', [], sandbox);
+            await ProcessHelper.spawnAndTrackSuccess('TEST_GET_OUTPUT', [], sandbox);
 
             // First spawn should not call clear (new output channel)
             assert.strictEqual(mockOutputChannel.clear.callCount, 0);
 
             // Spawn again with the same code to test reusing existing output channel
-            await spawnAndTrackSuccess('TEST_GET_OUTPUT', [], sandbox);
+            await ProcessHelper.spawnAndTrackSuccess('TEST_GET_OUTPUT', [], sandbox);
 
             // Second spawn should call clear (reusing existing output channel)
             assert.strictEqual(mockOutputChannel.clear.callCount, 1);

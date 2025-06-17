@@ -4,53 +4,28 @@ import * as sinon from 'sinon';
 import { ProcessTracker } from '../processTracker';
 import * as appCommand from '../appCommand';
 import * as utils from '../utils';
-import { spawnAndTrackSuccess } from './helpers/processHelpers';
+import { ProcessHelper } from './helpers/processHelpers';
 import { FsHelperMock } from './helpers/fsHelperMock';
 
 suite('Process Crash Detection', () => {
     let sandbox: sinon.SinonSandbox;
     let showErrorMessageStub: sinon.SinonStub;
-    let createOutputChannelStub: sinon.SinonStub;
-    let outputChannelStub: any;
 
     setup(() => {
         sandbox = sinon.createSandbox();
-        
-        // Reset the mock filesystem
-        FsHelperMock.reset();
         FsHelperMock.mock(sandbox);
-        
+        ProcessHelper.mock(sandbox);
+
         // Mock workspaceHash to return a predictable value
         sandbox.stub(utils, 'workspaceHash').returns('mock-hash-1234');
-        
-        // Mock output channel
-        outputChannelStub = {
-            show: sandbox.stub(),
-            append: sandbox.stub(),
-            appendLine: sandbox.stub(),
-            dispose: sandbox.stub(),
-            clear: sandbox.stub(),
-            // Add LogOutputChannel methods
-            trace: sandbox.stub(),
-            debug: sandbox.stub(),
-            info: sandbox.stub(),
-            warn: sandbox.stub(),
-            error: sandbox.stub(),
-            logLevel: 1 // vscode.LogLevel.Info
-        };
         
         // Ensure vscode.window exists
         if (!vscode.window) {
             (vscode as any).window = {};
         }
-        if (!vscode.window.createOutputChannel) {
-            (vscode.window as any).createOutputChannel = () => outputChannelStub;
-        }
         if (!vscode.window.showErrorMessage) {
             (vscode.window as any).showErrorMessage = () => Promise.resolve({ title: 'Show Output' });
         }
-        
-        createOutputChannelStub = sandbox.stub(vscode.window, 'createOutputChannel').returns(outputChannelStub);
         showErrorMessageStub = sandbox.stub(vscode.window, 'showErrorMessage').resolves({ title: 'Show Output' });
         
         // Ensure vscode.workspace exists
@@ -69,26 +44,6 @@ suite('Process Crash Detection', () => {
                 get: sandbox.stub().returns(true)
             } as any);
         }
-
-
-        // Mock process.kill to prevent actual process operations
-        // For signal 0 (existence check), return true for our mock PIDs
-        sandbox.stub(process, 'kill').callsFake((pid: any, signal?: any) => {
-            if (signal === 0) {
-                // For existence check, always return true for our test PIDs
-                // (which are in the range 1000-11000 from the spawn mock)
-                const numPid = typeof pid === 'string' ? parseInt(pid) : pid;
-                if (numPid >= 1000 && numPid < 11000) {
-                    return true;
-                }
-                // For other PIDs, simulate "process not found"
-                const error = new Error('kill ESRCH');
-                (error as any).code = 'ESRCH';
-                throw error;
-            }
-            // For other signals (like SIGTERM), always return true
-            return true;
-        });
 
         // Spy on ProcessTracker.stopProcess to see if it's being called
         sandbox.spy(ProcessTracker, 'stopProcess');
@@ -111,8 +66,6 @@ suite('Process Crash Detection', () => {
 
     teardown(() => {
         sandbox.restore();
-        // Reset mock filesystem state between tests
-        FsHelperMock.reset();
         // Clean up any test files
         ProcessTracker.clearAllTerminationReasons();
         // Clear output channels map to prevent test interference
@@ -123,7 +76,7 @@ suite('Process Crash Detection', () => {
         const code = 'TEST_CRASH';
         
         // Spawn a process that will crash (simulate by triggering exit event)
-        const { child } = await spawnAndTrackSuccess(code);
+        const { child } = await ProcessHelper.spawnAndTrackSuccess(code);
 
         // Simulate process crash (exit without user intervention)
         child.emit('exit', 1, null);
@@ -135,8 +88,8 @@ suite('Process Crash Detection', () => {
         assert.strictEqual(ProcessTracker.getTerminationReason(code), 'crashed');
         
         // Verify output channel was shown
-        assert(outputChannelStub.show.calledWith(true), 'Output channel should be shown');
-        
+        assert(ProcessHelper.mockOutputChannel.show.calledWith(true), 'Output channel should be shown');
+
         // Verify error message was displayed
         assert(showErrorMessageStub.calledOnce, 'Error message should be displayed');
         assert(showErrorMessageStub.calledWith(
@@ -145,7 +98,7 @@ suite('Process Crash Detection', () => {
         ), 'Error message should contain correct text');
         
         // Verify process exit message was logged
-        assert(outputChannelStub.appendLine.calledWith('\n[Process exited with code 1]'), 
+        assert(ProcessHelper.mockOutputChannel.appendLine.calledWith('\n[Process exited with code 1]'),
                'Process exit should be logged');
     });
 
@@ -153,7 +106,7 @@ suite('Process Crash Detection', () => {
         const code = 'TEST_USER_STOP';
         
         // Spawn a process
-        const { child } = await spawnAndTrackSuccess(code);
+        const { child } = await ProcessHelper.spawnAndTrackSuccess(code);
 
         // Simulate user stopping the process
         await ProcessTracker.stopProcess(code);
@@ -175,11 +128,11 @@ suite('Process Crash Detection', () => {
         const code = 'TEST_REUSE';
         
         // Spawn process twice with same code
-        await spawnAndTrackSuccess(code);
-        await spawnAndTrackSuccess(code);
+        await ProcessHelper.spawnAndTrackSuccess(code);
+        await ProcessHelper.spawnAndTrackSuccess(code);
 
         // Verify createOutputChannel was called only once
-        assert.strictEqual(createOutputChannelStub.callCount, 1, 
+        assert.strictEqual(ProcessHelper.createOutputChannelStub?.callCount, 1, 
                           'Output channel should be reused for same process code');
     });
 
@@ -187,13 +140,13 @@ suite('Process Crash Detection', () => {
         const code = 'TEST_DISPOSE';
         
         // Spawn a process
-        await spawnAndTrackSuccess(code);
-        
+        await ProcessHelper.spawnAndTrackSuccess(code);
+
         // Dispose the output channel
         ProcessTracker.disposeOutputChannel(code);
         
         // Verify output channel was disposed
-        assert(outputChannelStub.dispose.calledOnce, 'Output channel should be disposed');
+        assert(ProcessHelper.mockOutputChannel.dispose.calledOnce, 'Output channel should be disposed');
     });
 
     test('should dispose all output channels when requested', async () => {
@@ -201,14 +154,14 @@ suite('Process Crash Detection', () => {
         
         // Spawn multiple processes
         for (const code of codes) {
-            await spawnAndTrackSuccess(code);
+            await ProcessHelper.spawnAndTrackSuccess(code);
         }
         
         // Dispose all output channels
         ProcessTracker.disposeAllOutputChannels();
         
         // Verify all output channels were disposed
-        assert.strictEqual(outputChannelStub.dispose.callCount, codes.length, 
+        assert.strictEqual(ProcessHelper.mockOutputChannel.dispose.callCount, codes.length, 
                           'All output channels should be disposed');
     });
 
@@ -221,7 +174,7 @@ suite('Process Crash Detection', () => {
         const codes = ['TEST_STOP_ALL_1', 'TEST_STOP_ALL_2'];
         const children = [];
         for (const code of codes) {
-            const { child } = await spawnAndTrackSuccess(code);
+            const { child } = await ProcessHelper.spawnAndTrackSuccess(code);
             children.push(child);
         }
 

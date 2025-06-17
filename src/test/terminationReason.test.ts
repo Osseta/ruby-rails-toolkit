@@ -1,6 +1,4 @@
 import * as assert from 'assert';
-import * as path from 'path';
-import * as fs from 'fs';
 import { ProcessTracker } from '../processTracker';
 import * as sinon from 'sinon';
 import * as utils from '../utils';

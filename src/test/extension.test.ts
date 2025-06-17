@@ -4,7 +4,6 @@ import { activate } from '../extension';
 import * as rspecRunner from '../rspecRunner';
 import * as appRunner from '../appRunner';
 import { ProcessTracker } from '../processTracker';
-import { getLogger } from '../logger';
 import { ExtensionVscodeWrapper } from '../extensionVscodeWrapper';
 
 suite('Extension Activation Tests', () => {
