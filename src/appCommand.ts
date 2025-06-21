@@ -7,6 +7,7 @@ import * as vscode from 'vscode';
 import { listRdbgSocks } from './utils';
 import { getLogger } from './logger';
 import { FsHelper } from './fsHelper';
+import { checkAndCleanRdbgSocket } from './rdbgSockets';
 
 const APP_COMMANDS_FILENAME = 'app_commands.jsonc';
 const VSCODE_DIR = '.vscode';
@@ -378,9 +379,11 @@ export async function waitForRdbgSocket(sessionName: string, maxRetries: number 
             lastSocksResult = socksResult;
             const lines = socksResult.stdout.split('\n').filter(Boolean);
             socketFile = lines.find((line: string) => line.includes(`-${sessionName}`));
-            
+
             if (socketFile) {
+              if (await checkAndCleanRdbgSocket(socketFile)) {
                 return socketFile;
+              }
             }
             
             // Wait before the next attempt (except on the last attempt)
