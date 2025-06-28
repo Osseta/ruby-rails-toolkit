@@ -7,7 +7,7 @@ import * as vscode from 'vscode';
 import { listRdbgSocks } from './utils';
 import { getLogger } from './logger';
 import { FsHelper } from './fsHelper';
-import { checkAndCleanRdbgSocket, RDBG_SOCK_DIR, ensureRdbgSocketDirectory } from './rdbgSockets';
+import { checkAndCleanRdbgSocket, RDBG_SOCK_DIR, ensureRdbgSocketDirectory, getRdbgSocketDirEnvPrefix } from './rdbgSockets';
 
 const APP_COMMANDS_FILENAME = 'app_commands.jsonc';
 const VSCODE_DIR = '.vscode';
@@ -344,8 +344,15 @@ export async function debugCommand(command: Command) {
  * @returns The complete rdbg command string
  */
 function buildRdbgCommand(sessionName: string, baseCommand: string, waitFlag: string = '-n'): string {
-    ensureRdbgSocketDirectory();
-    return `RUBY_DEBUG_SOCK_DIR=${RDBG_SOCK_DIR} bundle exec rdbg --open --session-name=${sessionName} ${waitFlag} --command -- env -u HEADLESS ${baseCommand}`;
+    const config = vscode.workspace.getConfiguration('rubyToolkit');
+    const useCustomSocketDir = config.get('useCustomRdbgSocketDirectory', true);
+    
+    if (useCustomSocketDir) {
+        ensureRdbgSocketDirectory();
+    }
+    
+    const envPrefix = getRdbgSocketDirEnvPrefix();
+    return `${envPrefix}bundle exec rdbg --open --session-name=${sessionName} ${waitFlag} --command -- env -u HEADLESS ${baseCommand}`;
 }
 
 /**

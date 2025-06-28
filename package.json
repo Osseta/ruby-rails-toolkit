@@ -74,6 +74,11 @@
           "type": "boolean",
           "default": true,
           "description": "Disable RSpec integration (CodeLens and debugging features)"
+        },
+        "rubyToolkit.useCustomRdbgSocketDirectory": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use custom RDBG socket directory (/tmp/rdbg-socks) for debugging sessions. When disabled, uses the default rdbg socket location."
         }
       }
     },

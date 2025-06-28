@@ -1,5 +1,6 @@
 import * as assert from 'assert';
 import * as sinon from 'sinon';
+import * as vscode from 'vscode';
 import * as rdbgSockets from '../rdbgSockets';
 import { RdbgSocketPath } from '../types';
 import * as utils from '../utils';
@@ -19,6 +20,14 @@ suite('rdbgSockets', () => {
     sandbox.stub(require('../utils'), 'unlinkSocket');
     sandbox.stub(require('../utils'), 'listRdbgSocks');
     sandbox.stub(require('../utils'), 'extractPidFromRdbgSocketPath');
+    
+    // Mock vscode.workspace.getConfiguration
+    if (!vscode.workspace) {
+      (vscode as any).workspace = {};
+    }
+    if (!vscode.workspace.getConfiguration) {
+      vscode.workspace.getConfiguration = sandbox.stub();
+    }
   });
 
   teardown(() => {
@@ -88,5 +97,58 @@ suite('rdbgSockets', () => {
     listRdbgSocksStub.resolves({ stdout: '/tmp/sock1\n/tmp/sock2\n' });
     const result = await rdbgSockets.waitForRdbgSessionAndGetSocket('SESSION', 50, 10);
     assert.strictEqual(result, null);
+  });
+
+  suite('getRdbgSocketDirEnvPrefix', () => {
+    test('returns environment variable prefix when setting is enabled', () => {
+      // Mock configuration to return true for useCustomRdbgSocketDirectory
+      const configMock = {
+        get: sandbox.stub().callsFake((key: string, defaultValue?: any) => {
+          if (key === 'useCustomRdbgSocketDirectory') {
+            return true;
+          }
+          return defaultValue;
+        })
+      };
+      (vscode.workspace.getConfiguration as sinon.SinonStub).resetBehavior();
+      (vscode.workspace.getConfiguration as sinon.SinonStub).returns(configMock);
+
+      const result = rdbgSockets.getRdbgSocketDirEnvPrefix();
+      assert.strictEqual(result, 'RUBY_DEBUG_SOCK_DIR=/tmp/rdbg-socks ');
+    });
+
+    test('returns empty string when setting is disabled', () => {
+      // Mock configuration to return false for useCustomRdbgSocketDirectory
+      const configMock = {
+        get: sandbox.stub().callsFake((key: string, defaultValue?: any) => {
+          if (key === 'useCustomRdbgSocketDirectory') {
+            return false;
+          }
+          return defaultValue;
+        })
+      };
+      (vscode.workspace.getConfiguration as sinon.SinonStub).resetBehavior();
+      (vscode.workspace.getConfiguration as sinon.SinonStub).returns(configMock);
+
+      const result = rdbgSockets.getRdbgSocketDirEnvPrefix();
+      assert.strictEqual(result, '');
+    });
+
+    test('defaults to enabled when setting is not found', () => {
+      // Mock configuration to return undefined for useCustomRdbgSocketDirectory (using default)
+      const configMock = {
+        get: sandbox.stub().callsFake((key: string, defaultValue?: any) => {
+          if (key === 'useCustomRdbgSocketDirectory') {
+            return defaultValue; // Should return the default value of true
+          }
+          return defaultValue;
+        })
+      };
+      (vscode.workspace.getConfiguration as sinon.SinonStub).resetBehavior();
+      (vscode.workspace.getConfiguration as sinon.SinonStub).returns(configMock);
+
+      const result = rdbgSockets.getRdbgSocketDirEnvPrefix();
+      assert.strictEqual(result, 'RUBY_DEBUG_SOCK_DIR=/tmp/rdbg-socks ');
+    });
   });
 });

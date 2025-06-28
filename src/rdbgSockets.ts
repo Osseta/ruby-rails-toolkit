@@ -8,6 +8,21 @@ import { FsHelper } from './fsHelper';
 export const RDBG_SOCK_DIR = '/tmp/rdbg-socks';
 
 /**
+ * Gets the RDBG socket directory environment variable prefix based on user settings.
+ * @returns The environment variable prefix string if the setting is enabled, empty string otherwise
+ */
+export function getRdbgSocketDirEnvPrefix(): string {
+    const config = vscode.workspace.getConfiguration('rubyToolkit');
+    const useCustomSocketDir = config.get('useCustomRdbgSocketDirectory', true);
+    
+    if (useCustomSocketDir) {
+        return `RUBY_DEBUG_SOCK_DIR=${RDBG_SOCK_DIR} `;
+    }
+    
+    return '';
+}
+
+/**
  * Ensures the rdbg socket directory exists.
  * Creates the directory if it doesn't exist.
  */

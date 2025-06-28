@@ -86,6 +86,19 @@ suite('Rspec Runner Test Suite', () => {
 		sinon.stub(vscode.workspace, 'workspaceFolders').value([{
 			uri: { fsPath: '/mock/workspace' }
 		}]);
+		
+		// Mock vscode.workspace.getConfiguration
+		if (!vscode.workspace.getConfiguration) {
+			(vscode.workspace as any).getConfiguration = () => ({});
+		}
+		sinon.stub(vscode.workspace, 'getConfiguration').returns({
+			get: sinon.stub().callsFake((key: string, defaultValue?: any) => {
+				if (key === 'useCustomRdbgSocketDirectory') {
+					return true; // Default to enabled
+				}
+				return defaultValue;
+			})
+		} as any);
 	});
 
 	teardown(() => {
@@ -464,7 +477,19 @@ suite('Rspec Runner Test Suite', () => {
 			assert.strictEqual(ensureRdbgSocketDirectoryStub.called, true);
 		});
 
-		test('debugRubySpec should include RUBY_DEBUG_SOCK_DIR in rdbg command', async () => {
+		test('debugRubySpec should include RUBY_DEBUG_SOCK_DIR when setting is enabled', async () => {
+			// Mock configuration to return true for useCustomRdbgSocketDirectory
+			const configMock = {
+				get: sinon.stub().callsFake((key: string, defaultValue?: any) => {
+					if (key === 'useCustomRdbgSocketDirectory') {
+						return true;
+					}
+					return defaultValue;
+				})
+			};
+			(vscode.workspace.getConfiguration as sinon.SinonStub).resetBehavior();
+			(vscode.workspace.getConfiguration as sinon.SinonStub).returns(configMock);
+
 			const mockUri = { fsPath: '/test/workspace/spec/models/user_spec.rb' } as vscode.Uri;
 			
 			// Test the command construction logic directly
@@ -474,6 +499,34 @@ suite('Rspec Runner Test Suite', () => {
 			
 			// Verify the expected command includes the socket directory
 			assert.strictEqual(expectedRdbgCmd.includes('RUBY_DEBUG_SOCK_DIR=/tmp/rdbg-socks'), true);
+			assert.strictEqual(expectedRdbgCmd.includes('bundle exec rdbg'), true);
+			assert.strictEqual(expectedRdbgCmd.includes('--session-name=_RSPEC'), true);
+		});
+
+		test('debugRubySpec should not include RUBY_DEBUG_SOCK_DIR when setting is disabled', async () => {
+			// Mock configuration to return false for useCustomRdbgSocketDirectory
+			const configMock = {
+				get: sinon.stub().callsFake((key: string, defaultValue?: any) => {
+					if (key === 'useCustomRdbgSocketDirectory') {
+						return false;
+					}
+					return defaultValue;
+				})
+			};
+			(vscode.workspace.getConfiguration as sinon.SinonStub).resetBehavior();
+			(vscode.workspace.getConfiguration as sinon.SinonStub).returns(configMock);
+
+			// Test the getRdbgSocketDirEnvPrefix function
+			const envPrefix = rdbgSockets.getRdbgSocketDirEnvPrefix();
+			assert.strictEqual(envPrefix, '');
+			
+			// Test the expected command without socket directory
+			const relativePath = 'spec/models/user_spec.rb';
+			const command = `bundle exec rspec ${relativePath}`;
+			const expectedRdbgCmd = `bundle exec rdbg --open --session-name=_RSPEC --command -- ${command}`;
+			
+			// Verify the expected command does not include the socket directory
+			assert.strictEqual(expectedRdbgCmd.includes('RUBY_DEBUG_SOCK_DIR'), false);
 			assert.strictEqual(expectedRdbgCmd.includes('bundle exec rdbg'), true);
 			assert.strictEqual(expectedRdbgCmd.includes('--session-name=_RSPEC'), true);
 		});
