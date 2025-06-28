@@ -64,6 +64,7 @@ export class CommandStateManager {
             if (terminationReason === 'crashed' && !hasOutputChannel) {
                 this.logger.info(`Command ${cmd.code}: changing termination reason from 'crashed' to 'none' (no output channel)`);
                 terminationReason = 'none';
+                ProcessTracker.setTerminationReason(cmd.code, 'none');
             }
             
             if (this.setButtonState(cmd.code, { 

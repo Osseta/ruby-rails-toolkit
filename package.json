@@ -33,7 +33,7 @@
   "icon": "icon.jpeg",
   "license": "MIT",
   "engines": {
-    "vscode": "^1.80.0"
+    "vscode": "^1.93.0"
   },
   "categories": [
     "Other"
@@ -173,6 +173,10 @@
       {
         "command": "rspec-runner.debugRubySpec",
         "title": "Debug RSpec"
+      },
+      {
+        "command": "rspec-runner.runRubySpecWithShellIntegration",
+        "title": "Run RSpec with Output Capture"
       },
       {
         "command": "features.refresh",
@@ -335,7 +339,7 @@
     "@types/mocha": "^10.0.7",
     "@types/node": "^20.19.0",
     "@types/sinon": "^17.0.4",
-    "@types/vscode": "^1.80.0",
+    "@types/vscode": "^1.93.0",
     "@typescript-eslint/eslint-plugin": "^8.34.0",
     "@typescript-eslint/parser": "^8.34.0",
     "@vscode/test-cli": "^0.0.10",

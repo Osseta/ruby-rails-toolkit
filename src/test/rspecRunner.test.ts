@@ -112,6 +112,12 @@ suite('Rspec Runner Test Suite', () => {
 		// The method should have been called to register providers and commands
 		// We can't directly verify call counts since the stubs are set up globally
 		// But we can verify that the context has subscriptions
+		// Expected subscriptions:
+		// 1. debugCodeLensProvider
+		// 2. runCodeLensProvider  
+		// 3. rspec-runner.debugRubySpec command
+		// 4. rspec-runner.debugEntireRubySpec command
+		// 5. rspec-runner.runRubySpec command
 		assert.strictEqual(testContext.subscriptions.length, 5);
 	});
 

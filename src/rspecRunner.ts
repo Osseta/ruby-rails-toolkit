@@ -6,6 +6,7 @@ import { waitForRdbgSessionAndGetSocket } from './rdbgSockets';
 import { getOrCreateTerminal } from './utils';
 import { listRdbgSocks } from './utils';
 import { waitForRdbgSocket, startVSCodeDebugSession } from './appCommand';
+import { ProcessTracker } from './processTracker';
 
 // Utility: determine if a line is a spec/test line
 /**
@@ -148,11 +149,40 @@ async function debugRubySpec(uri: vscode.Uri, line: number) {
 }
 
 /**
- * Runs a spec file or a specific line in headless mode (no debugger attached).
+ * Executes a command using Terminal Shell Integration and captures output.
+ * @param terminal The terminal to use.
+ * @param command The command to execute.
+ * @param onData Callback function to handle captured data.
+ * @returns Promise that resolves when command completes.
+ */
+async function executeCommandWithOutputCapture(
+    terminal: vscode.Terminal,
+    command: string,
+    onData: (data: string) => void,
+    onNoShellIntegration: () => void = () => {}
+): Promise<void> {
+    if (terminal.shellIntegration) {
+        // Use shell integration to execute command and capture output
+        const execution = terminal.shellIntegration.executeCommand(command);
+        const stream = execution.read();
+        for await (const data of stream) {
+            onData(data);
+        }
+    } else {
+        // Fallback: just send text if shell integration is not available
+        terminal.sendText(command);
+        console.warn('Shell integration not available, output capture not possible');
+        onNoShellIntegration();
+    }
+}
+
+/**
+ * Enhanced version of runRubySpec using Shell Integration API for output capture.
  * @param uri The URI of the spec file.
  * @param line The line number to run (0 for the whole file).
+ * @returns Promise that resolves when the command completes.
  */
-async function runRubySpec(uri: vscode.Uri, line: number) {
+async function runRubySpec(uri: vscode.Uri, line: number): Promise<void> {
     const fullPath = uri.fsPath;
     const specIndex = fullPath.indexOf('spec/');
     let relativePath: string;
@@ -161,14 +191,33 @@ async function runRubySpec(uri: vscode.Uri, line: number) {
     } else {
         relativePath = path.basename(fullPath);
     }
+    
     if (!rspecTerminal) {
         rspecTerminal = await getOrCreateTerminal('RSpec Runner');
     }
+    
     const baseCommand = `HEADLESS=1 bundle exec rspec`;
     const rspecCommand = line === 0
         ? `${baseCommand} ${relativePath}`
         : `${baseCommand} ${relativePath}:${line + 1}`;
-    rspecTerminal.sendText(rspecCommand);
+    
+    let capturedOutput = '';
+    
+    await executeCommandWithOutputCapture(rspecTerminal, rspecCommand, (data) => {
+        capturedOutput += data;
+        console.log('RSpec output:', data);
+        
+        // Parse for PID or other information
+        const pidMatch = data.match(/PID:\s*(\d+)/);
+        if (pidMatch) {
+            console.log('Found PID in output:', pidMatch[1]);
+        }
+        
+        // Check for test completion
+        if (data.includes('examples,') || data.includes('failures') || data.includes('Finished in')) {
+            console.log('RSpec test completed');
+        }
+    }, () => {});
 }
 
 /**
@@ -177,4 +226,7 @@ async function runRubySpec(uri: vscode.Uri, line: number) {
 export function deactivate() {}
 
 // Export for testing
-export { SpecCodeLensProvider };
+export { 
+    SpecCodeLensProvider, 
+    executeCommandWithOutputCapture,
+};
