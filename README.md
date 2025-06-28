@@ -106,6 +106,8 @@ When a feature is enabled via checkbox, its whitelist environment variables are 
 - `rubyToolkit.clearOutputChannelOnProcessRun`: Clear output on restart (default: `true`)
 - `rubyToolkit.showProcessOutputOnServer500Errors`: Show output on 500 errors (default: `true`)
 - `rubyToolkit.hideAnsiPunctuation`: Hide ANSI escape code punctuation and control characters in log output (default: `true`)
+- `rubyToolkit.disableRspecIntegration`: Disable RSpec integration (CodeLens and debugging features) (default: `true`)
+- `rubyToolkit.useCustomRdbgSocketDirectory`: Use custom RDBG socket directory (/tmp/rdbg-socks) for debugging sessions. When disabled, uses the default rdbg socket location (default: `true`)
 
 ## 🎯 Key Actions
 

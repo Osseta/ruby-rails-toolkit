@@ -1,5 +1,9 @@
 # Change Log
 
+## V2.1.0
+- Use (optional) custom rdbg socket directory
+- Detect stale rdbg sockets and remove
+
 ## V2.0.0
 - Add "features" capability. Easily toggle environment variables to change how you commands run
 
