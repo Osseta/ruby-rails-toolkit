@@ -203,10 +203,25 @@ async function runRubySpec(uri: vscode.Uri, line: number): Promise<void> {
     
     let capturedOutput = '';
     
-    await executeCommandWithOutputCapture(rspecTerminal, rspecCommand, (data) => {
+    executeCommandWithOutputCapture(rspecTerminal, rspecCommand, (data) => {
         capturedOutput += data;
         console.log('RSpec output:', data);
         
+        // DEBUGGER: Debugger can attach via UNIX domain socket (/var/folders/lp/wlkdydxs58qbz00vdx2bkdc80000gn/T/com.apple.shortcuts.mac-helper/rdbg-501/rdbg-70897)
+        // DEBUGGER: wait for debugger connection...
+         // extract the socket path from the output
+        const socketMatch = data.match(/DEBUGGER: Debugger can attach via UNIX domain socket\s*\(([^)]+)\)/);
+        if (socketMatch) {
+            const socketPath = socketMatch[1];
+            console.log('Debugger socket path:', socketPath);
+        }
+
+        // detect wait for debugger connection
+        if (data.includes('wait for debugger connection...')) {
+            console.log('Waiting for debugger connection...');
+            // Here you could implement logic to wait for the debugger to connect
+        }
+
         // Parse for PID or other information
         const pidMatch = data.match(/PID:\s*(\d+)/);
         if (pidMatch) {
@@ -217,7 +232,7 @@ async function runRubySpec(uri: vscode.Uri, line: number): Promise<void> {
         if (data.includes('examples,') || data.includes('failures') || data.includes('Finished in')) {
             console.log('RSpec test completed');
         }
-    }, () => {});
+  }, () => {});
 }
 
 /**

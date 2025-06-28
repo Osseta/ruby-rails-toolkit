@@ -287,6 +287,7 @@ export class ProcessTracker {
         for (const v of forbiddenVars) {
             delete env[v];
         }
+        logger.debug(`Whitelisted environment for ${code}: ${Object.keys(env).join(', ')}`);
         
         return new Promise((resolve, reject) => {
             const shell = process.env.SHELL || 'zsh';
