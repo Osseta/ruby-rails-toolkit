@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as os from 'os';
 import * as fs from 'fs';
 import * as path from 'path';
-import { waitForRdbgSessionAndGetSocket } from './rdbgSockets';
+import { waitForRdbgSessionAndGetSocket, RDBG_SOCK_DIR, ensureRdbgSocketDirectory } from './rdbgSockets';
 import { getOrCreateTerminal } from './utils';
 import { listRdbgSocks } from './utils';
 import { waitForRdbgSocket, startVSCodeDebugSession } from './appCommand';
@@ -137,8 +137,11 @@ async function debugRubySpec(uri: vscode.Uri, line: number) {
         ? `bundle exec rspec ${relativePath}`
         : `bundle exec rspec ${relativePath}:${line + 1}`;
     
-    // Start rdbg in the terminal
-    const rdbgCmd = `bundle exec rdbg --open --session-name=_RSPEC --command -- ${command}`;
+    // Ensure socket directory exists
+    ensureRdbgSocketDirectory();
+    
+    // Start rdbg in the terminal with custom socket directory
+    const rdbgCmd = `RUBY_DEBUG_SOCK_DIR=${RDBG_SOCK_DIR} bundle exec rdbg --open --session-name=_RSPEC --command -- ${command}`;
     rspecTerminal.sendText(rdbgCmd);
     
     // Wait for the rdbg socket to appear and then start debugging
@@ -244,4 +247,5 @@ export function deactivate() {}
 export { 
     SpecCodeLensProvider, 
     executeCommandWithOutputCapture,
+    debugRubySpec,
 };

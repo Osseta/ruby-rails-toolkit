@@ -3,6 +3,19 @@ import { promisify } from 'util';
 import * as vscode from 'vscode';
 import { listRdbgSocks, unlinkSocket, extractPidFromRdbgSocketPath } from './utils';
 import { RdbgSocketPath } from './types';
+import { FsHelper } from './fsHelper';
+
+export const RDBG_SOCK_DIR = '/tmp/rdbg-socks';
+
+/**
+ * Ensures the rdbg socket directory exists.
+ * Creates the directory if it doesn't exist.
+ */
+export function ensureRdbgSocketDirectory(): void {
+    if (!FsHelper.existsSync(RDBG_SOCK_DIR)) {
+        FsHelper.mkdirSync(RDBG_SOCK_DIR, { recursive: true });
+    }
+}
 
 /**
  * Checks if a given rdbg socket is stale (not used by any process) and deletes it if so.

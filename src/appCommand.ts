@@ -7,7 +7,7 @@ import * as vscode from 'vscode';
 import { listRdbgSocks } from './utils';
 import { getLogger } from './logger';
 import { FsHelper } from './fsHelper';
-import { checkAndCleanRdbgSocket } from './rdbgSockets';
+import { checkAndCleanRdbgSocket, RDBG_SOCK_DIR, ensureRdbgSocketDirectory } from './rdbgSockets';
 
 const APP_COMMANDS_FILENAME = 'app_commands.jsonc';
 const VSCODE_DIR = '.vscode';
@@ -166,7 +166,7 @@ export async function runCommand(command: Command, waitFlag: string = '-n') {
     logger.info(`Starting command: ${command.code}`, { 
         description: command.description,
         commandType: command.commandType,
-        waitFlag 
+        waitFlag
     });
     
     return await FileLockManager.withLock(command.code, async () => {
@@ -344,7 +344,8 @@ export async function debugCommand(command: Command) {
  * @returns The complete rdbg command string
  */
 function buildRdbgCommand(sessionName: string, baseCommand: string, waitFlag: string = '-n'): string {
-    return `bundle exec rdbg --open --session-name=${sessionName} ${waitFlag} --command -- env -u HEADLESS ${baseCommand}`;
+    ensureRdbgSocketDirectory();
+    return `RUBY_DEBUG_SOCK_DIR=${RDBG_SOCK_DIR} bundle exec rdbg --open --session-name=${sessionName} ${waitFlag} --command -- env -u HEADLESS ${baseCommand}`;
 }
 
 /**

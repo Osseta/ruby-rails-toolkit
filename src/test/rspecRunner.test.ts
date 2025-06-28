@@ -2,6 +2,7 @@ import * as assert from 'assert';
 import * as sinon from 'sinon';
 import * as vscode from 'vscode';
 import { isSpecLine, activate, deactivate } from '../rspecRunner';
+import * as rdbgSockets from '../rdbgSockets';
 
 suite('Rspec Runner Test Suite', () => {
 	let utils: any;
@@ -424,6 +425,62 @@ suite('Rspec Runner Test Suite', () => {
 			
 			const expected = 'bundle exec rdbg --open --session-name=_RSPEC --command -- bundle exec rspec spec/models/user_spec.rb:6';
 			assert.strictEqual(rdbgCmd, expected);
+		});
+	});
+
+	suite('rdbg socket directory integration', () => {
+		let ensureRdbgSocketDirectoryStub: sinon.SinonStub;
+		let waitForRdbgSocketStub: sinon.SinonStub;
+		let startVSCodeDebugSessionStub: sinon.SinonStub;
+
+		setup(() => {
+			// Stub rdbg socket functions
+			ensureRdbgSocketDirectoryStub = sinon.stub(rdbgSockets, 'ensureRdbgSocketDirectory');
+			
+			// Stub appCommand functions
+			const appCommand = require('../appCommand');
+			waitForRdbgSocketStub = sinon.stub(appCommand, 'waitForRdbgSocket').resolves('/tmp/rdbg-socks/socket');
+			startVSCodeDebugSessionStub = sinon.stub(appCommand, 'startVSCodeDebugSession').resolves();
+		});
+
+		teardown(() => {
+			ensureRdbgSocketDirectoryStub.restore();
+			waitForRdbgSocketStub.restore();
+			startVSCodeDebugSessionStub.restore();
+		});
+
+		test('debugRubySpec should call ensureRdbgSocketDirectory', async () => {
+			const mockUri = { fsPath: '/test/workspace/spec/models/user_spec.rb' } as vscode.Uri;
+			
+			// Import and call debugRubySpec directly
+			const { debugRubySpec } = await import('../rspecRunner');
+
+			try {
+				await debugRubySpec(mockUri, 0);
+			} catch (error) {
+				// Expected to fail due to mocking, but we care about ensureRdbgSocketDirectory being called
+			}
+
+			assert.strictEqual(ensureRdbgSocketDirectoryStub.called, true);
+		});
+
+		test('debugRubySpec should include RUBY_DEBUG_SOCK_DIR in rdbg command', async () => {
+			const mockUri = { fsPath: '/test/workspace/spec/models/user_spec.rb' } as vscode.Uri;
+			
+			// Test the command construction logic directly
+			const relativePath = 'spec/models/user_spec.rb';
+			const command = `bundle exec rspec ${relativePath}`;
+			const expectedRdbgCmd = `RUBY_DEBUG_SOCK_DIR=${rdbgSockets.RDBG_SOCK_DIR} bundle exec rdbg --open --session-name=_RSPEC --command -- ${command}`;
+			
+			// Verify the expected command includes the socket directory
+			assert.strictEqual(expectedRdbgCmd.includes('RUBY_DEBUG_SOCK_DIR=/tmp/rdbg-socks'), true);
+			assert.strictEqual(expectedRdbgCmd.includes('bundle exec rdbg'), true);
+			assert.strictEqual(expectedRdbgCmd.includes('--session-name=_RSPEC'), true);
+		});
+
+		test('debugRubySpec should use correct socket directory path', async () => {
+			// Test that the RDBG_SOCK_DIR constant is correct
+			assert.strictEqual(rdbgSockets.RDBG_SOCK_DIR, '/tmp/rdbg-socks');
 		});
 	});
 

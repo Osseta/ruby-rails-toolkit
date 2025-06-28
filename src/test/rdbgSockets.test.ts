@@ -3,23 +3,54 @@ import * as sinon from 'sinon';
 import * as rdbgSockets from '../rdbgSockets';
 import { RdbgSocketPath } from '../types';
 import * as utils from '../utils';
+import { FsHelper } from '../fsHelper';
 
 let unlinkStub: sinon.SinonStub;
 
 suite('rdbgSockets', () => {
+  let sandbox: sinon.SinonSandbox;
+
   setup(() => {
-    sinon.restore();
+    sandbox = sinon.createSandbox();
     // Mock workspaceHash to return a predictable value
-    sinon.stub(utils, 'workspaceHash').returns('mock-hash-1234');
-    unlinkStub = sinon.stub();
-    sinon.replace(require('fs'), 'unlink', unlinkStub);
-    sinon.stub(require('../utils'), 'unlinkSocket');
-    sinon.stub(require('../utils'), 'listRdbgSocks');
-    sinon.stub(require('../utils'), 'extractPidFromRdbgSocketPath');
+    sandbox.stub(utils, 'workspaceHash').returns('mock-hash-1234');
+    unlinkStub = sandbox.stub();
+    sandbox.replace(require('fs'), 'unlink', unlinkStub);
+    sandbox.stub(require('../utils'), 'unlinkSocket');
+    sandbox.stub(require('../utils'), 'listRdbgSocks');
+    sandbox.stub(require('../utils'), 'extractPidFromRdbgSocketPath');
   });
 
   teardown(() => {
-    sinon.restore();
+    sandbox.restore();
+  });
+
+  suite('RDBG_SOCK_DIR constant', () => {
+    test('should be set to /tmp/rdbg-socks', () => {
+      assert.strictEqual(rdbgSockets.RDBG_SOCK_DIR, '/tmp/rdbg-socks');
+    });
+  });
+
+  suite('ensureRdbgSocketDirectory', () => {
+    test('should create directory if it does not exist', () => {
+      const existsSyncStub = sandbox.stub(FsHelper, 'existsSync').returns(false);
+      const mkdirSyncStub = sandbox.stub(FsHelper, 'mkdirSync');
+
+      rdbgSockets.ensureRdbgSocketDirectory();
+
+      assert.strictEqual(existsSyncStub.calledWith('/tmp/rdbg-socks'), true);
+      assert.strictEqual(mkdirSyncStub.calledWith('/tmp/rdbg-socks', { recursive: true }), true);
+    });
+
+    test('should not create directory if it already exists', () => {
+      const existsSyncStub = sandbox.stub(FsHelper, 'existsSync').returns(true);
+      const mkdirSyncStub = sandbox.stub(FsHelper, 'mkdirSync');
+
+      rdbgSockets.ensureRdbgSocketDirectory();
+
+      assert.strictEqual(existsSyncStub.calledWith('/tmp/rdbg-socks'), true);
+      assert.strictEqual(mkdirSyncStub.called, false);
+    });
   });
 
   test('checkAndCleanRdbgSocket keeps socket if process is running', async () => {
